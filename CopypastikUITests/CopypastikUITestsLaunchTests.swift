@@ -1,13 +1,13 @@
 //
-//  PastePureUITestsLaunchTests.swift
-//  PastePureUITests
+//  CopypastikUITestsLaunchTests.swift
+//  CopypastikUITests
 //
 //  Created by Andrii Ivanchenko on 27.04.2026.
 //
 
 import XCTest
 
-final class PastePureUITestsLaunchTests: XCTestCase {
+final class CopypastikUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
