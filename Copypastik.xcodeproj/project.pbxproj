@@ -12,37 +12,37 @@
 			containerPortal = 9D6F244B2F9FCB9200705308 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9D6F24522F9FCB9200705308;
-			remoteInfo = PastePure;
+			remoteInfo = Copypastik;
 		};
 		9D6F246B2F9FCB9400705308 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9D6F244B2F9FCB9200705308 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9D6F24522F9FCB9200705308;
-			remoteInfo = PastePure;
+			remoteInfo = Copypastik;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		9D6F24532F9FCB9200705308 /* PastePure.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PastePure.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D6F24602F9FCB9400705308 /* PastePureTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PastePureTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D6F246A2F9FCB9400705308 /* PastePureUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PastePureUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D6F24532F9FCB9200705308 /* Copypastik.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Copypastik.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D6F24602F9FCB9400705308 /* CopypastikTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CopypastikTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D6F246A2F9FCB9400705308 /* CopypastikUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CopypastikUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9D6F24552F9FCB9200705308 /* PastePure */ = {
+		9D6F24552F9FCB9200705308 /* Copypastik */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PastePure;
+			path = Copypastik;
 			sourceTree = "<group>";
 		};
-		9D6F24632F9FCB9400705308 /* PastePureTests */ = {
+		9D6F24632F9FCB9400705308 /* CopypastikTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PastePureTests;
+			path = CopypastikTests;
 			sourceTree = "<group>";
 		};
-		9D6F246D2F9FCB9400705308 /* PastePureUITests */ = {
+		9D6F246D2F9FCB9400705308 /* CopypastikUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PastePureUITests;
+			path = CopypastikUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		9D6F244A2F9FCB9200705308 = {
 			isa = PBXGroup;
 			children = (
-				9D6F24552F9FCB9200705308 /* PastePure */,
-				9D6F24632F9FCB9400705308 /* PastePureTests */,
-				9D6F246D2F9FCB9400705308 /* PastePureUITests */,
+				9D6F24552F9FCB9200705308 /* Copypastik */,
+				9D6F24632F9FCB9400705308 /* CopypastikTests */,
+				9D6F246D2F9FCB9400705308 /* CopypastikUITests */,
 				9D6F24542F9FCB9200705308 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		9D6F24542F9FCB9200705308 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9D6F24532F9FCB9200705308 /* PastePure.app */,
-				9D6F24602F9FCB9400705308 /* PastePureTests.xctest */,
-				9D6F246A2F9FCB9400705308 /* PastePureUITests.xctest */,
+				9D6F24532F9FCB9200705308 /* Copypastik.app */,
+				9D6F24602F9FCB9400705308 /* CopypastikTests.xctest */,
+				9D6F246A2F9FCB9400705308 /* CopypastikUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		9D6F24522F9FCB9200705308 /* PastePure */ = {
+		9D6F24522F9FCB9200705308 /* Copypastik */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9D6F24742F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePure" */;
+			buildConfigurationList = 9D6F24742F9FCB9400705308 /* Build configuration list for PBXNativeTarget "Copypastik" */;
 			buildPhases = (
 				9D6F244F2F9FCB9200705308 /* Sources */,
 				9D6F24502F9FCB9200705308 /* Frameworks */,
@@ -108,18 +108,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9D6F24552F9FCB9200705308 /* PastePure */,
+				9D6F24552F9FCB9200705308 /* Copypastik */,
 			);
-			name = PastePure;
+			name = Copypastik;
 			packageProductDependencies = (
 			);
-			productName = PastePure;
-			productReference = 9D6F24532F9FCB9200705308 /* PastePure.app */;
+			productName = Copypastik;
+			productReference = 9D6F24532F9FCB9200705308 /* Copypastik.app */;
 			productType = "com.apple.product-type.application";
 		};
-		9D6F245F2F9FCB9400705308 /* PastePureTests */ = {
+		9D6F245F2F9FCB9400705308 /* CopypastikTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9D6F24772F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePureTests" */;
+			buildConfigurationList = 9D6F24772F9FCB9400705308 /* Build configuration list for PBXNativeTarget "CopypastikTests" */;
 			buildPhases = (
 				9D6F245C2F9FCB9400705308 /* Sources */,
 				9D6F245D2F9FCB9400705308 /* Frameworks */,
@@ -131,18 +131,18 @@
 				9D6F24622F9FCB9400705308 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				9D6F24632F9FCB9400705308 /* PastePureTests */,
+				9D6F24632F9FCB9400705308 /* CopypastikTests */,
 			);
-			name = PastePureTests;
+			name = CopypastikTests;
 			packageProductDependencies = (
 			);
-			productName = PastePureTests;
-			productReference = 9D6F24602F9FCB9400705308 /* PastePureTests.xctest */;
+			productName = CopypastikTests;
+			productReference = 9D6F24602F9FCB9400705308 /* CopypastikTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		9D6F24692F9FCB9400705308 /* PastePureUITests */ = {
+		9D6F24692F9FCB9400705308 /* CopypastikUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9D6F247A2F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePureUITests" */;
+			buildConfigurationList = 9D6F247A2F9FCB9400705308 /* Build configuration list for PBXNativeTarget "CopypastikUITests" */;
 			buildPhases = (
 				9D6F24662F9FCB9400705308 /* Sources */,
 				9D6F24672F9FCB9400705308 /* Frameworks */,
@@ -154,13 +154,13 @@
 				9D6F246C2F9FCB9400705308 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				9D6F246D2F9FCB9400705308 /* PastePureUITests */,
+				9D6F246D2F9FCB9400705308 /* CopypastikUITests */,
 			);
-			name = PastePureUITests;
+			name = CopypastikUITests;
 			packageProductDependencies = (
 			);
-			productName = PastePureUITests;
-			productReference = 9D6F246A2F9FCB9400705308 /* PastePureUITests.xctest */;
+			productName = CopypastikUITests;
+			productReference = 9D6F246A2F9FCB9400705308 /* CopypastikUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9D6F244E2F9FCB9200705308 /* Build configuration list for PBXProject "PastePure" */;
+			buildConfigurationList = 9D6F244E2F9FCB9200705308 /* Build configuration list for PBXProject "Copypastik" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9D6F24522F9FCB9200705308 /* PastePure */,
-				9D6F245F2F9FCB9400705308 /* PastePureTests */,
-				9D6F24692F9FCB9400705308 /* PastePureUITests */,
+				9D6F24522F9FCB9200705308 /* Copypastik */,
+				9D6F245F2F9FCB9400705308 /* CopypastikTests */,
+				9D6F24692F9FCB9400705308 /* CopypastikUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		9D6F24622F9FCB9400705308 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9D6F24522F9FCB9200705308 /* PastePure */;
+			target = 9D6F24522F9FCB9200705308 /* Copypastik */;
 			targetProxy = 9D6F24612F9FCB9400705308 /* PBXContainerItemProxy */;
 		};
 		9D6F246C2F9FCB9400705308 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9D6F24522F9FCB9200705308 /* PastePure */;
+			target = 9D6F24522F9FCB9200705308 /* Copypastik */;
 			targetProxy = 9D6F246B2F9FCB9400705308 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -398,19 +398,19 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = H4C99D255G;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePure;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.Copypastik;
+				PRODUCT_NAME = Copypastik;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -430,19 +430,19 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = H4C99D255G;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePure;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.Copypastik;
+				PRODUCT_NAME = Copypastik;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -463,14 +463,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePureTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.CopypastikTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PastePure.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PastePure";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Copypastik.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Copypastik";
 			};
 			name = Debug;
 		};
@@ -484,14 +484,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePureTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.CopypastikTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PastePure.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PastePure";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Copypastik.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Copypastik";
 			};
 			name = Release;
 		};
@@ -503,14 +503,14 @@
 				DEVELOPMENT_TEAM = H4C99D255G;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePureUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.CopypastikUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = PastePure;
+				TEST_TARGET_NAME = Copypastik;
 			};
 			name = Debug;
 		};
@@ -522,21 +522,21 @@
 				DEVELOPMENT_TEAM = H4C99D255G;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.PastePureUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ivanchenko.CopypastikUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = PastePure;
+				TEST_TARGET_NAME = Copypastik;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9D6F244E2F9FCB9200705308 /* Build configuration list for PBXProject "PastePure" */ = {
+		9D6F244E2F9FCB9200705308 /* Build configuration list for PBXProject "Copypastik" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9D6F24722F9FCB9400705308 /* Debug */,
@@ -545,7 +545,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9D6F24742F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePure" */ = {
+		9D6F24742F9FCB9400705308 /* Build configuration list for PBXNativeTarget "Copypastik" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9D6F24752F9FCB9400705308 /* Debug */,
@@ -554,7 +554,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9D6F24772F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePureTests" */ = {
+		9D6F24772F9FCB9400705308 /* Build configuration list for PBXNativeTarget "CopypastikTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9D6F24782F9FCB9400705308 /* Debug */,
@@ -563,7 +563,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9D6F247A2F9FCB9400705308 /* Build configuration list for PBXNativeTarget "PastePureUITests" */ = {
+		9D6F247A2F9FCB9400705308 /* Build configuration list for PBXNativeTarget "CopypastikUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9D6F247B2F9FCB9400705308 /* Debug */,

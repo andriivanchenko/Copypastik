@@ -1,13 +1,13 @@
 //
-//  PastePureUITests.swift
-//  PastePureUITests
+//  CopypastikUITests.swift
+//  CopypastikUITests
 //
 //  Created by Andrii Ivanchenko on 27.04.2026.
 //
 
 import XCTest
 
-final class PastePureUITests: XCTestCase {
+final class CopypastikUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
