@@ -1,126 +1,171 @@
-# Copypastik
+<p align="center">
+  <img src="Copypastik/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="112" alt="Copypastik app icon">
+</p>
 
-A polished macOS menu bar app that keeps a text and image clipboard history and lets you paste any item with a global keyboard shortcut.
+<h1 align="center">Copypastik</h1>
+
+<p align="center">
+  A polished macOS menu bar clipboard history app for text and images.
+</p>
+
+<p align="center">
+  <a href="https://github.com/andriivanchenko/Copypastik/releases/latest">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/andriivanchenko/Copypastik?label=release">
+  </a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS-111827">
+  <img alt="Swift" src="https://img.shields.io/badge/Swift-5-orange">
+  <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-none-brightgreen">
+</p>
+
+<p align="center">
+  <a href="https://github.com/andriivanchenko/Copypastik/releases/latest"><strong>Download the latest DMG</strong></a>
+  ·
+  <a href="#features">Features</a>
+  ·
+  <a href="#privacy">Privacy</a>
+  ·
+  <a href="#build-from-source">Build from source</a>
+</p>
+
+Copypastik keeps a small, searchable clipboard history in your menu bar, then lets you paste any saved item with a fast floating picker. It is built for the everyday rhythm of copying links, snippets, commands, notes, and screenshots without turning clipboard history into a whole second workspace.
+
+## Download
+
+Grab the latest `.dmg` from the [Releases page](https://github.com/andriivanchenko/Copypastik/releases/latest).
+
+1. Download `Copypastik.dmg`.
+2. Open it.
+3. Drag `Copypastik.app` into `Applications`.
+4. Launch Copypastik from Applications.
+
+On first launch, macOS may ask for Accessibility permission. Copypastik needs it for the global hotkey and for instant paste into the previously active app.
 
 ## Features
 
-- Stores the last 20 copied text or bitmap image items
-- Re-copying an existing item moves it back to the top instead of duplicating it
-- Global shortcut **Control + Option + V** opens a floating picker above the current app
-- Real-time search/filter across clipboard history
-- Keyboard navigation (↑ ↓ ← Enter Esc), mouse selection, and inline item deletion
-- Polished floating picker with native material, subtle animation, hover states, and reduced-motion support
-- Semantic clipboard rows with icons for links, commands, code-like snippets, multi-line text, plain text, and image thumbnails
-- Match count, keyboard hint footer, and warm empty states
-- Menu bar history view with the same row style and one-click copy confirmation
-- Click outside the picker to close it
-- Pastes text as **plain text** and bitmap images as image data; rich text, fonts, formatting, and copied files are ignored
-- No Dock icon, runs entirely in the menu bar
-- Custom app icon and compact menu bar icon
-- Registers itself for launch at login
-- No external dependencies
+- **Instant picker**: press `Control + Option + V` to open a floating clipboard picker above the current app.
+- **Text and image history**: stores copied plain text and bitmap images for the current app session.
+- **Smart deduplication**: copying an existing item moves it back to the top instead of creating duplicates.
+- **Fast search**: filter clipboard history in real time.
+- **Keyboard-first workflow**: navigate with arrows, paste with Enter, close with Esc.
+- **Inline deletion**: reveal and remove individual items without clearing the full history.
+- **Plain-text paste**: text is pasted without rich formatting, fonts, or copied file payloads.
+- **Menu bar native**: no Dock icon, no extra window clutter, no external dependencies.
+- **Launch at login**: Copypastik can register itself as a login item.
+- **Polished details**: native material, semantic row icons, image thumbnails, reduced-motion support, and a compact menu bar history view.
+
+## How It Works
+
+| Action | Shortcut or control |
+|---|---|
+| Open picker | `Control + Option + V` |
+| Search history | Type in the search field |
+| Move selection | `Up` / `Down` |
+| Paste selected item | `Enter` |
+| Reveal delete action | `Left` on selected row, or right-click |
+| Delete revealed item | `Left` again, or click the trash button |
+| Hide delete action | `Right`, change selection, or continue typing |
+| Close picker | `Esc` or click outside |
+| Clear all history | Picker trash button, or menu bar icon -> `Clear History` |
+
+If Accessibility permission is missing, Copypastik still copies the selected item back to the clipboard. You can then paste manually with `Command + V`.
+
+## Privacy
+
+Copypastik is intentionally local and small.
+
+- Clipboard history is kept in memory for the current app session.
+- No account, cloud sync, analytics, or network service is used.
+- Rich text, files, and mixed clipboard payloads are ignored.
+- Accessibility permission is used for the global hotkey and paste automation.
 
 ## Requirements
 
-- macOS 13 or later
-- Xcode 15 or later (to build from source)
-- **Accessibility permission** — required for the global hotkey and instant paste
+- macOS 14 or later
+- Accessibility permission for global hotkey and instant paste
+- Xcode 15 or later if building from source
 
-## Setup
+## Build From Source
 
-### 1. Build and run
+Clone the repository and open the Xcode project:
 
-Open `Copypastik.xcodeproj` in Xcode, select the `Copypastik` scheme, and press **Run**.
+```bash
+git clone https://github.com/andriivanchenko/Copypastik.git
+cd Copypastik
+open Copypastik.xcodeproj
+```
 
-Copypastik is configured as a menu bar agent app, so it does not appear in the Dock after launch. Use the menu bar icon to open its history window.
+Select the `Copypastik` scheme, then press `Run`.
 
-### 2. Grant Accessibility permission
+You can also build from the command line without signing:
 
-On first launch, Copypastik checks Accessibility access and requests it if needed.
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+xcodebuild build \
+  -project Copypastik.xcodeproj \
+  -scheme Copypastik \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/CopypastikDerivedData \
+  CODE_SIGNING_ALLOWED=NO
+```
 
-If it does not, go to:
+## Create a DMG
 
-> System Settings → Privacy & Security → Accessibility → enable Copypastik
+The repository includes a packaging script for a standard macOS drag-to-Applications DMG:
 
-Restart the app after granting permission.
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/package_dmg.sh
+```
 
-### 3. Optional: verify launch at login
+The output is written to:
 
-Copypastik registers itself as a login item on launch. You can confirm this in:
+```text
+dist/Copypastik.dmg
+```
 
-> System Settings → General → Login Items
+You can also package an existing app bundle:
 
-## Usage
-
-| Action | How |
-|---|---|
-| Open clipboard picker | **Control + Option + V** |
-| Filter history | Type in the search field |
-| Navigate results | **↑ / ↓** arrow keys |
-| Paste selected item | **Enter** |
-| Reveal item delete action | **←** on selected row, or right-click a row |
-| Delete revealed item | Press **←** again, or click the revealed trash button |
-| Hide delete action | **→**, change selection, or continue typing |
-| Close without pasting | **Esc** |
-| Close picker | Click anywhere outside the picker |
-| Paste with mouse | Click any row |
-| Clear all history | Picker trash button, or menu bar icon → **Clear History** |
-
-The selected row is the default action. Pressing **Enter** briefly confirms the row, writes it back to the clipboard, closes the picker, and simulates **Cmd + V** into the previously active app. Paste confirmation is guarded so one Enter press results in one paste.
-
-Individual deletion is reveal-first: the first left-arrow press or right-click exposes a trash action on the row; confirming it slides the row away and removes that item from history without changing the system clipboard. Active search text stays in place after deletion.
-
-If Accessibility permission is missing, the item is still copied to the clipboard — you can paste it manually with Cmd + V.
-
-## Interface details
-
-- Picker rows reserve stable space for the return glyph, so long snippets do not reflow when the selection changes.
-- Picker rows expose a compact trash action with a swipe-like slide animation for individual deletion.
-- The newest item gets a small accent dot when browsing the unfiltered history.
-- Commands and code-like snippets use monospaced typography; links, text, and multi-line content use standard system text; image rows show compact thumbnails with dimensions.
-- The picker uses subtle scale/fade open and close animations. When macOS Reduce Motion is enabled, motion is reduced to short opacity changes.
-- The menu bar view mirrors the picker row language so the app feels consistent whether opened from the hotkey or menu bar icon.
+```bash
+APP_PATH=/path/to/Copypastik.app scripts/package_dmg.sh
+```
 
 ## Architecture
 
-```
+```text
 CopypastikApp.swift          App entry point, MenuBarExtra scene, launch-at-login setup
-AppCoordinator              Owns all long-lived services
-│
-├── ClipboardStore          ObservableObject — typed history list, recency dedup, delete, 20-item cap
-│   └── PasteboardService   Polls NSPasteboard.changeCount every 0.5 s
-│
-├── HotkeyService           Carbon global hotkey registration for Ctrl+Opt+V
-│
-└── PickerWindowController  Floating NSPanel lifecycle, keyboard/delete routing, outside-click dismiss, CGEvent paste
-    └── PickerState         ObservableObject shared with SwiftUI view
-        └── ClipboardPickerView   Search field + semantic filtered picker UI + inline row deletion
+AppCoordinator              Owns long-lived services
+|
++-- ClipboardStore          Typed history, recency dedup, deletion, 20-item cap
+|   `-- PasteboardService   Polls NSPasteboard.changeCount every 0.5 seconds
+|
++-- HotkeyService           Carbon global hotkey registration
+|
+`-- PickerWindowController  Floating panel, keyboard routing, outside-click dismiss, paste
+    `-- ClipboardPickerView Search field, semantic rows, inline deletion
 ```
 
-### Key design decisions
+## Design Notes
 
-- **Polling vs. event tap** — `NSPasteboard` has no change notification API; polling `changeCount` at 0.5 s is the standard approach and is lightweight.
-- **Carbon hotkey registration** — `RegisterEventHotKey` captures `Control + Option + V` without leaking the literal `v` keystroke into the previously active app.
-- **Menu bar agent mode** — `LSUIElement` is enabled through generated Info.plist build settings, so Copypastik runs without a Dock icon while keeping its `MenuBarExtra`.
-- **Asset catalog icons** — the app icon lives in `AppIcon.appiconset`; the menu bar image lives in `MenuBarIcon.imageset` and is referenced from `MenuBarExtra`.
-- **`FloatingPanel` subclass** — a borderless `NSPanel` with `canBecomeKey = true` allows keyboard input without showing window chrome.
-- **Outside-click dismissal** — the picker panel closes on `windowDidResignKey`, so clicking anywhere else dismisses it immediately.
-- **Focus trigger pattern** — `PickerState.searchFocusTrigger` is an `Int` that increments on each `show()`. The SwiftUI view's `onChange` fires and sets `@FocusState`, reliably re-focusing the search field even though the panel is reused across invocations.
-- **One-shot paste confirmation** — Enter can be observed by both the local key monitor and SwiftUI submit handling, so the controller guards selection with an in-flight flag to prevent duplicate paste events.
-- **Stable row layout** — the return glyph slot is always reserved and animated with opacity/scale, preventing long text from rewrapping when a row becomes selected.
-- **Typed history items** — history stores plain text and normalized bitmap images in memory for the current app session.
-- **Recency deduplication** — copying an item that already exists removes the old copy and inserts the item at the top, keeping history unique while preserving recency.
-- **Reveal-first deletion** — individual item deletion requires an explicit reveal via left arrow or right-click, then confirmation via left arrow or the trash button. This keeps accidental deletion unlikely without adding confirmation dialogs.
-- **Semantic item presentation** — clipboard text is classified as link, command, code-like snippet, multi-line text, or plain text, while image rows show thumbnails, dimensions, and format metadata.
-- **Reduced motion support** — picker scale/stagger effects are disabled when macOS Reduce Motion is enabled.
-- **Self-write suppression** — when Copypastik writes a selected item back to the clipboard, `PasteboardService` records the exact `changeCount` and skips that notification so the item is not re-added to history.
-- **Supported clipboard payloads** — text writes use `NSPasteboard.PasteboardType.string`; bitmap images are normalized and written as image data. Rich text, copied files, and mixed payloads are ignored in this version.
+- `NSPasteboard` has no change notification API, so clipboard changes are detected by polling `changeCount`.
+- `RegisterEventHotKey` captures `Control + Option + V` without leaking keystrokes into the active app.
+- `LSUIElement` keeps the app menu-bar-only while preserving native SwiftUI menu bar behavior.
+- Paste confirmation is guarded so one Enter press results in one paste.
+- Image clipboard items are normalized to bitmap data and displayed with compact metadata.
+- Self-written pasteboard changes are suppressed so selecting an item does not duplicate it in history.
 
-## Verification
+## Tests
 
-Useful local checks:
+Run the focused unit test target:
 
-- Build app target without signing: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild build -project Copypastik.xcodeproj -scheme Copypastik -destination 'platform=macOS' -derivedDataPath /tmp/CopypastikDerivedData CODE_SIGNING_ALLOWED=NO`
-- Run focused unit tests: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test -project Copypastik.xcodeproj -scheme Copypastik -destination 'platform=macOS' -derivedDataPath /tmp/CopypastikDerivedDataUnitEsc CODE_SIGNING_ALLOWED=NO -only-testing:CopypastikTests -skip-testing:CopypastikUITests`
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+xcodebuild test \
+  -project Copypastik.xcodeproj \
+  -scheme Copypastik \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/CopypastikDerivedDataTests \
+  CODE_SIGNING_ALLOWED=NO \
+  -only-testing:CopypastikTests \
+  -skip-testing:CopypastikUITests
+```
 
-The full scheme includes the placeholder UI test target, which may require local signing/UI test setup before it can run end to end.
+The full scheme includes placeholder UI tests, which may require local signing and UI test setup before they run end to end.
