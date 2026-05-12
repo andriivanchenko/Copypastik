@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "menubar-copy-compact-aligned-template.png",
+      "filename" : "menubar-copy-tight.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "menubar-copy-compact-aligned-template@2x.png",
+      "filename" : "menubar-copy-tight@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "menubar-copy-compact-aligned-template@3x.png",
+      "filename" : "menubar-copy-tight@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

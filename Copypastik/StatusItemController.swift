@@ -21,7 +21,7 @@ final class StatusItemController: NSObject {
         self.settings = settings
         self.onShowOnboarding = onShowOnboarding
         self.onQuit = onQuit
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         configureStatusItem()
         configurePopovers()
@@ -29,10 +29,16 @@ final class StatusItemController: NSObject {
 
     private func configureStatusItem() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(named: "MenuBarIcon")
-        image?.isTemplate = true
+        guard let image = NSImage(named: "menubar-copy-tight") else {
+            print("Missing menubar-copy-tight image")
+            return
+        }
+        image.isTemplate = true
+        image.size = NSSize(width: 44, height: 18)
         button.image = image
         button.imagePosition = .imageOnly
+        button.title = ""
+        button.alignment = .center
         button.toolTip = "Copypastik"
         button.target = self
         button.action = #selector(handleStatusItemClick(_:))

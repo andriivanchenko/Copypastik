@@ -5,12 +5,16 @@ APP_NAME="${APP_NAME:-Copypastik}"
 PROJECT="${PROJECT:-${APP_NAME}.xcodeproj}"
 SCHEME="${SCHEME:-${APP_NAME}}"
 CONFIGURATION="${CONFIGURATION:-Release}"
-DERIVED_DATA="${DERIVED_DATA:-build/DerivedData}"
+DERIVED_DATA="${DERIVED_DATA:-/tmp/${APP_NAME}DerivedData}"
 DIST_DIR="${DIST_DIR:-dist}"
 DMG_NAME="${DMG_NAME:-${APP_NAME}}"
 VOLUME_NAME="${VOLUME_NAME:-${APP_NAME}}"
 APP_PATH="${APP_PATH:-}"
 CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}"
+CODE_SIGN_APP="${CODE_SIGN_APP:-YES}"
+CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
+CODE_SIGN_IDENTIFIER="${CODE_SIGN_IDENTIFIER:-}"
+CODE_SIGN_TIMESTAMP="${CODE_SIGN_TIMESTAMP:-none}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -28,6 +32,16 @@ Environment:
   CONFIGURATION  Build configuration. Default: ${CONFIGURATION}
   CODE_SIGNING_ALLOWED
                  Whether xcodebuild may code sign. Default: ${CODE_SIGNING_ALLOWED}
+  CODE_SIGN_APP  Whether to codesign the final .app bundle before packaging.
+                 Default: ${CODE_SIGN_APP}
+  CODE_SIGN_IDENTITY
+                 Signing identity for the final .app bundle. Default: ${CODE_SIGN_IDENTITY}
+                 Use "-" for local ad-hoc signing, or a Developer ID identity.
+  CODE_SIGN_IDENTIFIER
+                 Bundle identifier to pass to codesign. Defaults to CFBundleIdentifier.
+  CODE_SIGN_TIMESTAMP
+                 Timestamp mode passed to codesign. Default: ${CODE_SIGN_TIMESTAMP}
+                 Use "none" for local builds, or "yes" for Developer ID releases.
   DERIVED_DATA   Derived data path. Default: ${DERIVED_DATA}
   DIST_DIR       Output directory. Default: ${DIST_DIR}
   DMG_NAME       Output DMG base name. Default: ${DMG_NAME}
@@ -76,6 +90,39 @@ fi
 
 [[ -d "$APP_PATH" ]] || fail "app bundle not found: $APP_PATH"
 [[ "$APP_PATH" == *.app ]] || fail "APP_PATH must point to a .app bundle"
+
+if [[ "$CODE_SIGN_APP" == "YES" || "$CODE_SIGN_APP" == "yes" || "$CODE_SIGN_APP" == "1" ]]; then
+  command -v codesign >/dev/null || fail "codesign is required to sign the app bundle"
+
+  if [[ -z "$CODE_SIGN_IDENTIFIER" ]]; then
+    CODE_SIGN_IDENTIFIER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist")"
+  fi
+
+  xattr -cr "$APP_PATH"
+
+  timestamp_args=()
+  case "$CODE_SIGN_TIMESTAMP" in
+    none|NONE|no|NO|0)
+      timestamp_args+=(--timestamp=none)
+      ;;
+    yes|YES|1)
+      timestamp_args+=(--timestamp)
+      ;;
+    *)
+      timestamp_args+=(--timestamp="$CODE_SIGN_TIMESTAMP")
+      ;;
+  esac
+
+  echo "Signing ${APP_NAME}.app with identity '${CODE_SIGN_IDENTITY}'..."
+  codesign \
+    --force \
+    --sign "$CODE_SIGN_IDENTITY" \
+    "${timestamp_args[@]}" \
+    --identifier "$CODE_SIGN_IDENTIFIER" \
+    "$APP_PATH"
+
+  codesign --verify --strict --verbose=2 "$APP_PATH"
+fi
 
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${APP_NAME}.dmg-work.XXXXXX")"
 STAGING_DIR="$WORK_DIR/staging"
