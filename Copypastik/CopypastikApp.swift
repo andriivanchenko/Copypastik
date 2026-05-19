@@ -16,6 +16,7 @@ final class AppCoordinator: ObservableObject {
     private lazy var picker = PickerWindowController(store: store, settings: settings)
     private var statusItemController: StatusItemController?
     private var onboardingWindowController: OnboardingWindowController?
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
         print("[Copypastik] app launched")
@@ -24,7 +25,13 @@ final class AppCoordinator: ObservableObject {
             HotkeyService.requestAccessibilityIfNeeded()
         }
         hotkey.onTrigger = { [weak self] in self?.picker.show() }
-        hotkey.start()
+        hotkey.start(shortcut: settings.pickerShortcut)
+        settings.$pickerShortcut
+            .dropFirst()
+            .sink { [weak self] shortcut in
+                self?.hotkey.updateShortcut(shortcut)
+            }
+            .store(in: &cancellables)
 
         onboardingWindowController = OnboardingWindowController(settings: settings)
         statusItemController = StatusItemController(

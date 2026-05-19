@@ -9,12 +9,19 @@ final class ClipboardStore: ObservableObject {
 
     private let settings: AppSettings
     private let service = PasteboardService()
+    private var cancellables = Set<AnyCancellable>()
 
     init(settings: AppSettings? = nil, startsService: Bool = true) {
         self.settings = settings ?? AppSettings(managesLaunchAtLogin: false)
         service.onNewItem = { [weak self] item in
             DispatchQueue.main.async { self?.ingestCopiedItem(item) }
         }
+        self.settings.$historyLimit
+            .dropFirst()
+            .sink { [weak self] limit in
+                self?.trimHistory(to: limit.rawValue)
+            }
+            .store(in: &cancellables)
 
         if startsService {
             service.start()
@@ -64,7 +71,7 @@ final class ClipboardStore: ObservableObject {
             return
         }
 
-        let updatedItems = Self.historyItems(afterAdding: normalizedItem, to: items)
+        let updatedItems = Self.historyItems(afterAdding: normalizedItem, to: items, maxItems: settings.historyLimit.rawValue)
         guard updatedItems != items else {
             print("[Copypastik] duplicate/empty item ignored")
             return
@@ -123,5 +130,10 @@ final class ClipboardStore: ObservableObject {
         case .image:
             return item
         }
+    }
+
+    private func trimHistory(to maxItems: Int) {
+        guard items.count > maxItems else { return }
+        items = Array(items.prefix(maxItems))
     }
 }

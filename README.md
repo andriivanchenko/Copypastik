@@ -5,7 +5,7 @@
 <h1 align="center">Copypastik</h1>
 
 <p align="center">
-  A polished macOS menu bar clipboard history app for text and images.
+  A fast, local-first macOS menu bar clipboard history app for text and images.
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
   <a href="#build-from-source">Build from source</a>
 </p>
 
-Copypastik keeps a small, searchable clipboard history in your menu bar, then lets you paste any saved item with a fast floating picker. It is built for the everyday rhythm of copying links, snippets, commands, notes, and screenshots without turning clipboard history into a whole second workspace.
+Copypastik keeps a small, searchable clipboard history in your menu bar, then lets you paste any saved text or image with a keyboard-first floating picker. Use the default `Control + Option + V` shortcut, switch to `Command + Shift + V` from Settings, and keep the whole workflow private on your Mac.
 
 ## Download
 
@@ -42,7 +42,7 @@ On first launch, macOS may ask for Accessibility permission. Copypastik needs it
 
 ## Features
 
-- **Instant picker**: press `Control + Option + V` to open a floating clipboard picker above the current app.
+- **Instant picker**: press `Control + Option + V` by default to open a floating clipboard picker above the current app.
 - **Text and image history**: stores copied plain text and bitmap images for the current app session.
 - **Smart deduplication**: copying an existing item moves it back to the top instead of creating duplicates.
 - **Fast search**: filter clipboard history in real time.
@@ -51,13 +51,15 @@ On first launch, macOS may ask for Accessibility permission. Copypastik needs it
 - **Plain-text paste**: text is pasted without rich formatting, fonts, or copied file payloads.
 - **Menu bar native**: no Dock icon, no extra window clutter, no external dependencies.
 - **Launch at login**: Copypastik can register itself as a login item.
+- **Configurable shortcut**: switch the picker shortcut to `Command + Shift + V` from Settings.
+- **Configurable history size**: keep 20, 50, or 100 clipboard items.
 - **Polished details**: native material, semantic row icons, image thumbnails, reduced-motion support, and a compact menu bar history view.
 
 ## How It Works
 
 | Action | Shortcut or control |
 |---|---|
-| Open picker | `Control + Option + V` |
+| Open picker | `Control + Option + V` by default; switch to `Command + Shift + V` in Settings |
 | Search history | Type in the search field |
 | Move selection | `Up` / `Down` |
 | Paste selected item | `Enter` |
@@ -134,7 +136,7 @@ APP_PATH=/path/to/Copypastik.app scripts/package_dmg.sh
 CopypastikApp.swift          App entry point, MenuBarExtra scene, launch-at-login setup
 AppCoordinator              Owns long-lived services
 |
-+-- ClipboardStore          Typed history, recency dedup, deletion, 20-item cap
++-- ClipboardStore          Typed history, recency dedup, deletion, configurable item cap
 |   `-- PasteboardService   Polls NSPasteboard.changeCount every 0.5 seconds
 |
 +-- HotkeyService           Carbon global hotkey registration
@@ -146,7 +148,7 @@ AppCoordinator              Owns long-lived services
 ## Design Notes
 
 - `NSPasteboard` has no change notification API, so clipboard changes are detected by polling `changeCount`.
-- `RegisterEventHotKey` captures `Control + Option + V` without leaking keystrokes into the active app.
+- `RegisterEventHotKey` captures the selected picker shortcut without leaking keystrokes into the active app.
 - `LSUIElement` keeps the app menu-bar-only while preserving native SwiftUI menu bar behavior.
 - Paste confirmation is guarded so one Enter press results in one paste.
 - Image clipboard items are normalized to bitmap data and displayed with compact metadata.

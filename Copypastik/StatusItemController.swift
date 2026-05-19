@@ -56,7 +56,7 @@ final class StatusItemController: NSObject {
 
         settingsPopover.behavior = .transient
         settingsPopover.animates = true
-        settingsPopover.contentSize = NSSize(width: 320, height: 390)
+        settingsPopover.contentSize = NSSize(width: 320, height: 420)
         refreshSettingsPopoverContent()
     }
 
@@ -137,7 +137,7 @@ struct SettingsPopoverView: View {
             }
             .scrollIndicators(.never)
         }
-        .frame(width: 320, height: 390)
+        .frame(width: 320, height: 420)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             isPopoverVisible = true
@@ -178,12 +178,7 @@ struct SettingsPopoverView: View {
 
     private var statusSection: some View {
         SettingsSection(title: "Status") {
-            SettingsInfoRow(
-                symbolName: "keyboard",
-                title: "Shortcut",
-                subtitle: "Control + Option + V",
-                tint: Color.accentColor
-            )
+            SettingsShortcutRow(shortcut: $settings.pickerShortcut)
 
             SettingsRowDivider()
 
@@ -240,6 +235,10 @@ struct SettingsPopoverView: View {
                 tint: Color.accentColor,
                 isOn: $settings.isClipboardHistoryEnabled
             )
+
+            SettingsRowDivider()
+
+            SettingsHistoryLimitRow(historyLimit: $settings.historyLimit)
         }
     }
 
@@ -386,6 +385,153 @@ private struct SettingsToggleRow: View {
                     .controlSize(.small)
             }
         )
+    }
+}
+
+private struct SettingsShortcutRow: View {
+    @Binding var shortcut: PickerShortcut
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                SettingsIcon(symbolName: "keyboard", tint: Color.accentColor)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shortcut")
+                        .font(.system(size: 12.5, weight: .medium))
+                    Text(shortcut.displayName)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            SettingsOptionRail(selection: $shortcut, options: PickerShortcut.allCases) { shortcut, isSelected in
+                HStack(spacing: 7) {
+                    Text(shortcut.keycapDisplayName)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .monospaced()
+
+                    Text(shortcut.modifierDisplayName)
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.78) : Color.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .accessibilityLabel("Shortcut")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct SettingsHistoryLimitRow: View {
+    @Binding var historyLimit: ClipboardHistoryLimit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                SettingsIcon(symbolName: "list.number", tint: Color.accentColor)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("History Limit")
+                        .font(.system(size: 12.5, weight: .medium))
+                    Text("Keep up to \(historyLimit.rawValue) items.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            SettingsOptionRail(selection: $historyLimit, options: ClipboardHistoryLimit.allCases) { limit, isSelected in
+                VStack(spacing: 1) {
+                    Text(limit.displayName)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+
+                    Text("items")
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.72) : Color.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .accessibilityLabel("History Limit")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct SettingsOptionRail<Option: Hashable, Label: View>: View {
+    @Binding var selection: Option
+    let options: [Option]
+    @ViewBuilder let label: (Option, Bool) -> Label
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.14)) {
+                        selection = option
+                    }
+                } label: {
+                    label(option, isSelected)
+                        .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.86))
+                        .padding(.horizontal, 9)
+                        .frame(height: 34)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(isSelected ? Color.accentColor : Color.primary.opacity(0.055))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(
+                                    isSelected ? Color.white.opacity(0.22) : Color.primary.opacity(0.06),
+                                    lineWidth: 0.75
+                                )
+                        )
+                        .shadow(color: isSelected ? Color.accentColor.opacity(0.18) : .clear, radius: 4, y: 1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(0.045))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.055), lineWidth: 0.75)
+        )
+    }
+}
+
+private extension PickerShortcut {
+    var keycapDisplayName: String {
+        switch self {
+        case .controlOptionV:
+            return "⌃⌥V"
+        case .commandShiftV:
+            return "⌘⇧V"
+        }
+    }
+
+    var modifierDisplayName: String {
+        switch self {
+        case .controlOptionV:
+            return "Control Option"
+        case .commandShiftV:
+            return "Command Shift"
+        }
     }
 }
 

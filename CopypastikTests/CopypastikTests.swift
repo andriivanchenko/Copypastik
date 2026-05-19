@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 import Testing
 @testable import Copypastik
@@ -201,7 +202,9 @@ struct CopypastikTests {
 
         #expect(settings.isLaunchAtLoginEnabled)
         #expect(settings.isClipboardHistoryEnabled)
+        #expect(settings.historyLimit == .twenty)
         #expect(!settings.hasCompletedOnboarding)
+        #expect(settings.pickerShortcut == .controlOptionV)
     }
 
     @MainActor
@@ -211,12 +214,47 @@ struct CopypastikTests {
 
         settings.isLaunchAtLoginEnabled = false
         settings.isClipboardHistoryEnabled = false
+        settings.historyLimit = .fifty
+        settings.pickerShortcut = .commandShiftV
         settings.markOnboardingCompleted()
 
         let restored = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
         #expect(!restored.isLaunchAtLoginEnabled)
         #expect(!restored.isClipboardHistoryEnabled)
+        #expect(restored.historyLimit == .fifty)
+        #expect(restored.pickerShortcut == .commandShiftV)
         #expect(restored.hasCompletedOnboarding)
+    }
+
+    @MainActor
+    @Test func appSettingsFallsBackForInvalidHistoryLimit() async throws {
+        let defaults = temporaryDefaults()
+        defaults.set(75, forKey: "settings.historyLimit")
+
+        let settings = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
+
+        #expect(settings.historyLimit == .twenty)
+    }
+
+    @MainActor
+    @Test func appSettingsFallsBackForInvalidPickerShortcut() async throws {
+        let defaults = temporaryDefaults()
+        defaults.set("not-a-shortcut", forKey: "settings.pickerShortcut")
+
+        let settings = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
+
+        #expect(settings.pickerShortcut == .controlOptionV)
+    }
+
+    @MainActor
+    @Test func pickerShortcutBuildsExpectedCarbonMetadata() async throws {
+        #expect(PickerShortcut.controlOptionV.displayName == "Control + Option + V")
+        #expect(PickerShortcut.controlOptionV.keyCode == UInt32(kVK_ANSI_V))
+        #expect(PickerShortcut.controlOptionV.carbonModifiers == UInt32(controlKey | optionKey))
+
+        #expect(PickerShortcut.commandShiftV.displayName == "Command + Shift + V")
+        #expect(PickerShortcut.commandShiftV.keyCode == UInt32(kVK_ANSI_V))
+        #expect(PickerShortcut.commandShiftV.carbonModifiers == UInt32(cmdKey | shiftKey))
     }
 
     @MainActor
@@ -237,6 +275,37 @@ struct CopypastikTests {
         store.ingestCopiedItem(.text("  Keep me clean\n"))
 
         #expect(store.items == [.text("Keep me clean")])
+    }
+
+    @MainActor
+    @Test func clipboardStoreUsesConfiguredHistoryLimit() async throws {
+        let settings = AppSettings(defaults: temporaryDefaults(), managesLaunchAtLogin: false)
+        settings.historyLimit = .fifty
+        let store = ClipboardStore(settings: settings, startsService: false)
+
+        for index in 1...25 {
+            store.ingestCopiedItem(.text("item \(index)"))
+        }
+
+        #expect(store.items.count == 25)
+        #expect(store.items.first == .text("item 25"))
+        #expect(store.items.last == .text("item 1"))
+    }
+
+    @MainActor
+    @Test func clipboardStoreTrimsHistoryWhenLimitShrinks() async throws {
+        let settings = AppSettings(defaults: temporaryDefaults(), managesLaunchAtLogin: false)
+        settings.historyLimit = .fifty
+        let store = ClipboardStore(settings: settings, startsService: false)
+
+        for index in 1...30 {
+            store.ingestCopiedItem(.text("item \(index)"))
+        }
+        settings.historyLimit = .twenty
+
+        #expect(store.items.count == 20)
+        #expect(store.items.first == .text("item 30"))
+        #expect(store.items.last == .text("item 11"))
     }
 
     @MainActor

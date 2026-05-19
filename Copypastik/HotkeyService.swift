@@ -6,13 +6,18 @@ final class HotkeyService {
     var onTrigger: (() -> Void)?
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
+    private var shortcut: PickerShortcut = .controlOptionV
 
     static var isAccessibilityGranted: Bool {
         AXIsProcessTrusted()
     }
 
-    func start() {
-        guard hotKeyRef == nil else { return }
+    func start(shortcut: PickerShortcut = .controlOptionV) {
+        guard eventHandlerRef == nil else {
+            updateShortcut(shortcut)
+            return
+        }
+        self.shortcut = shortcut
 
         let eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let userData = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
@@ -51,17 +56,37 @@ final class HotkeyService {
             return
         }
 
+        registerHotKey()
+    }
+
+    func updateShortcut(_ shortcut: PickerShortcut) {
+        guard eventHandlerRef != nil else {
+            start(shortcut: shortcut)
+            return
+        }
+        guard self.shortcut != shortcut else { return }
+        self.shortcut = shortcut
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+        registerHotKey()
+    }
+
+    private func registerHotKey() {
+        guard hotKeyRef == nil else { return }
+
         let hotKeyID = EventHotKeyID(signature: fourCharCode(from: "PstP"), id: 1)
         let registerStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_V),
-            UInt32(controlKey | optionKey),
+            shortcut.keyCode,
+            shortcut.carbonModifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
             &hotKeyRef
         )
         if registerStatus == noErr {
-            print("[Copypastik] global shortcut registered")
+            print("[Copypastik] global shortcut registered: \(shortcut.displayName)")
         } else {
             print("[Copypastik] failed to register global shortcut: \(registerStatus)")
         }

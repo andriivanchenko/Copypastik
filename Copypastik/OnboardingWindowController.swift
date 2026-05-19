@@ -76,29 +76,6 @@ struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedIndex = 0
 
-    private let steps = [
-        OnboardingStep(
-            title: "Welcome to Copypastik",
-            body: "Keep a clean text and image clipboard history right in your menu bar.",
-            symbolName: "menubar.rectangle"
-        ),
-        OnboardingStep(
-            title: "Use the Shortcut",
-            body: "Press Control + Option + V anywhere to open the floating picker.",
-            symbolName: "keyboard"
-        ),
-        OnboardingStep(
-            title: "Paste Text or Images",
-            body: "Choose an item and Copypastik writes it back to your clipboard.",
-            symbolName: "photo.on.rectangle"
-        ),
-        OnboardingStep(
-            title: "Search and Manage History",
-            body: "Filter copied text and images, use the arrow keys, delete rows, or clear everything.",
-            symbolName: "magnifyingglass"
-        )
-    ]
-
     var body: some View {
         VStack(spacing: 0) {
             hero
@@ -137,7 +114,11 @@ struct OnboardingView: View {
         ZStack {
             OnboardingHeroSurface()
 
-            OnboardingPickerPreview(selectedIndex: selectedIndex, reduceMotion: reduceMotion)
+            OnboardingPickerPreview(
+                selectedIndex: selectedIndex,
+                shortcutDisplayName: settings.pickerShortcut.displayName,
+                reduceMotion: reduceMotion
+            )
                 .id(currentStep.title)
                 .transition(.opacity.combined(with: .scale(scale: reduceMotion ? 1 : 0.985)))
         }
@@ -190,6 +171,31 @@ struct OnboardingView: View {
         steps[selectedIndex]
     }
 
+    private var steps: [OnboardingStep] {
+        [
+            OnboardingStep(
+                title: "Welcome to Copypastik",
+                body: "Keep a clean text and image clipboard history right in your menu bar.",
+                symbolName: "menubar.rectangle"
+            ),
+            OnboardingStep(
+                title: "Use the Shortcut",
+                body: "Press \(settings.pickerShortcut.displayName) anywhere to open the floating picker.",
+                symbolName: "keyboard"
+            ),
+            OnboardingStep(
+                title: "Paste Text or Images",
+                body: "Choose an item and Copypastik writes it back to your clipboard.",
+                symbolName: "photo.on.rectangle"
+            ),
+            OnboardingStep(
+                title: "Search and Manage History",
+                body: "Filter copied text and images, use the arrow keys, delete rows, or clear everything.",
+                symbolName: "magnifyingglass"
+            )
+        ]
+    }
+
     private var isLastStep: Bool {
         selectedIndex == steps.count - 1
     }
@@ -233,6 +239,7 @@ private struct OnboardingHeroSurface: View {
 
 private struct OnboardingPickerPreview: View {
     let selectedIndex: Int
+    let shortcutDisplayName: String
     let reduceMotion: Bool
 
     var body: some View {
@@ -307,7 +314,7 @@ private struct OnboardingPickerPreview: View {
     private var previewQuery: String {
         switch selectedIndex {
         case 1:
-            return "Control + Option + V"
+            return shortcutDisplayName
         case 3:
             return "design"
         default:
