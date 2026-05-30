@@ -129,6 +129,7 @@ struct SettingsPopoverView: View {
 
             ScrollView {
                 VStack(spacing: 12) {
+                    onboardingBanner
                     statusSection
                     behaviorSection
                     actionsSection
@@ -251,20 +252,55 @@ struct SettingsPopoverView: View {
         }
     }
 
+    private var onboardingBanner: some View {
+        Button(action: onShowOnboarding) {
+            HStack(spacing: 13) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "sparkles.rectangle.stack")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .symbolRenderingMode(.hierarchical)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Quick Setup Guide")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text("Replay the onboarding walkthrough")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.white.opacity(0.76))
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.white.opacity(0.52))
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 11)
+            .background(
+                LinearGradient(
+                    colors: [CopypastikTheme.accentDeep, CopypastikTheme.accent.opacity(0.90)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75)
+            )
+            .shadow(color: CopypastikTheme.accentDeep.opacity(0.28), radius: 8, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
+    }
+
     private var actionsSection: some View {
         SettingsSection(title: "Actions") {
-            Button(action: onShowOnboarding) {
-                SettingsActionContent(
-                    symbolName: "sparkles.rectangle.stack",
-                    title: "Onboarding",
-                    subtitle: "Replay the quick setup guide.",
-                    tint: Color.accentColor
-                )
-            }
-            .buttonStyle(.plain)
-
-            SettingsRowDivider()
-
             Button {
                 store.clearHistory()
             } label: {

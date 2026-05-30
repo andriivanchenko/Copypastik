@@ -70,7 +70,7 @@ private struct OnboardingStep: Identifiable {
 }
 
 struct OnboardingView: View {
-    let settings: AppSettings
+    @ObservedObject var settings: AppSettings
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -80,7 +80,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             hero
 
-            VStack(spacing: 18) {
+            VStack(spacing: 14) {
                 VStack(spacing: 9) {
                     Text(currentStep.title)
                         .font(.system(size: 32, weight: .bold))
@@ -93,6 +93,17 @@ struct OnboardingView: View {
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
                         .frame(maxWidth: 620)
+                }
+
+                if selectedIndex == 1 {
+                    ShortcutKeycapsView(shortcut: settings.pickerShortcut)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+
+                if isLastStep {
+                    LaunchAtLoginToggleRow(isOn: $settings.isLaunchAtLoginEnabled)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        .frame(maxWidth: 480)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -114,13 +125,22 @@ struct OnboardingView: View {
         ZStack {
             OnboardingHeroSurface()
 
-            OnboardingPickerPreview(
-                selectedIndex: selectedIndex,
-                shortcutDisplayName: settings.pickerShortcut.displayName,
-                reduceMotion: reduceMotion
-            )
-                .id(currentStep.title)
-                .transition(.opacity.combined(with: .scale(scale: reduceMotion ? 1 : 0.985)))
+            Group {
+                if isLastStep {
+                    OnboardingLaunchHeroPreview(
+                        isEnabled: settings.isLaunchAtLoginEnabled,
+                        reduceMotion: reduceMotion
+                    )
+                } else {
+                    OnboardingPickerPreview(
+                        selectedIndex: selectedIndex,
+                        shortcutDisplayName: settings.pickerShortcut.displayName,
+                        reduceMotion: reduceMotion
+                    )
+                }
+            }
+            .id(currentStep.title)
+            .transition(.opacity.combined(with: .scale(scale: reduceMotion ? 1 : 0.985)))
         }
         .frame(height: 310)
         .clipped()
@@ -192,6 +212,11 @@ struct OnboardingView: View {
                 title: "Search and Manage History",
                 body: "Filter copied text and images, use the arrow keys, delete rows, or clear everything.",
                 symbolName: "magnifyingglass"
+            ),
+            OnboardingStep(
+                title: "Always Ready",
+                body: "Enable launch at login so Copypastik starts with your Mac — always there when you need it.",
+                symbolName: "power"
             )
         ]
     }
@@ -330,6 +355,147 @@ private struct OnboardingPickerPreview: View {
             return 1
         default:
             return 0
+        }
+    }
+}
+
+private struct OnboardingLaunchHeroPreview: View {
+    let isEnabled: Bool
+    let reduceMotion: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                HStack(spacing: 6) {
+                    Image(systemName: "wifi")
+                    Image(systemName: "battery.100")
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.accentColor.opacity(isEnabled ? 0.18 : 0.08))
+                        Image(systemName: "doc.on.clipboard")
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .frame(width: 28, height: 20)
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(.top, 14)
+                .padding(.trailing, 18)
+            }
+
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(isEnabled ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.055))
+                    .frame(width: 72, height: 72)
+                    .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.72), value: isEnabled)
+
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "power")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                    .symbolRenderingMode(.hierarchical)
+                    .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: isEnabled)
+            }
+
+            Text(isEnabled ? "Launch at login enabled" : "Not set to launch at login")
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary.opacity(0.72))
+                .padding(.top, 12)
+                .animation(.easeOut(duration: 0.18), value: isEnabled)
+
+            Spacer()
+        }
+        .frame(width: 382, height: 242)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.75)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 28, x: 0, y: 16)
+    }
+}
+
+private struct ShortcutKeycapsView: View {
+    let shortcut: PickerShortcut
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(shortcut.keycapTokens, id: \.self) { token in
+                Text(token)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .frame(minWidth: 52, minHeight: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(Color.primary.opacity(0.055))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.75)
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.07), radius: 3, x: 0, y: 2)
+            }
+        }
+        .padding(.top, 4)
+    }
+}
+
+private struct LaunchAtLoginToggleRow: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(isOn ? Color.accentColor.opacity(0.13) : Color.primary.opacity(0.055))
+                    .frame(width: 36, height: 36)
+                Image(systemName: isOn ? "checkmark.circle.fill" : "power")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .animation(.spring(response: 0.32, dampingFraction: 0.72), value: isOn)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Launch at Login")
+                    .font(.system(size: 13.5, weight: .semibold))
+                Text("Copypastik starts automatically with macOS.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(isOn ? Color.accentColor.opacity(0.09) : Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .strokeBorder(
+                    isOn ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.08),
+                    lineWidth: 0.75
+                )
+        )
+        .animation(.easeOut(duration: 0.18), value: isOn)
+    }
+}
+
+private extension PickerShortcut {
+    var keycapTokens: [String] {
+        switch self {
+        case .controlOptionV: return ["⌃", "⌥", "V"]
+        case .commandShiftV: return ["⌘", "⇧", "V"]
         }
     }
 }

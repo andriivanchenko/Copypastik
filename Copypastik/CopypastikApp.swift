@@ -45,6 +45,11 @@ final class AppCoordinator: ObservableObject {
             }
         )
 
+        if !settings.hasCompletedOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.showOnboarding()
+            }
+        }
     }
 
     private func showOnboarding() {
