@@ -117,6 +117,7 @@ struct SettingsPopoverView: View {
 
     @State private var accessibilityGranted = HotkeyService.isAccessibilityGranted
     @State private var isPopoverVisible = false
+    @State private var showsLaunchAtLoginConfirmation = false
     private let accessibilityRefreshTimer = Timer.publish(every: 0.75, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -152,6 +153,14 @@ struct SettingsPopoverView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibilityStatus()
+        }
+        .alert("Launch at Login?", isPresented: $showsLaunchAtLoginConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable") {
+                settings.isLaunchAtLoginEnabled = true
+            }
+        } message: {
+            Text("Open Copypastik automatically when you log in to your Mac?")
         }
     }
 
@@ -221,9 +230,9 @@ struct SettingsPopoverView: View {
             SettingsToggleRow(
                 symbolName: "power",
                 title: "Launch at Login",
-                subtitle: "Start Copypastik automatically.",
+                subtitle: "Open Copypastik when you log in to your Mac.",
                 tint: Color.accentColor,
-                isOn: $settings.isLaunchAtLoginEnabled
+                isOn: launchAtLoginBinding
             )
 
             SettingsRowDivider()
@@ -282,6 +291,21 @@ struct SettingsPopoverView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: {
+                settings.isLaunchAtLoginEnabled
+            },
+            set: { newValue in
+                if newValue, !settings.isLaunchAtLoginEnabled {
+                    showsLaunchAtLoginConfirmation = true
+                } else {
+                    settings.isLaunchAtLoginEnabled = newValue
+                }
+            }
+        )
     }
 }
 

@@ -50,7 +50,7 @@ On first launch, macOS may ask for Accessibility permission. Copypastik needs it
 - **Inline deletion**: reveal and remove individual items without clearing the full history.
 - **Plain-text paste**: text is pasted without rich formatting, fonts, or copied file payloads.
 - **Menu bar native**: no Dock icon, no extra window clutter, no external dependencies.
-- **Launch at login**: Copypastik can register itself as a login item.
+- **Optional launch at login**: enable automatic startup from Settings when you want it.
 - **Configurable shortcut**: switch the picker shortcut to `Command + Shift + V` from Settings.
 - **Configurable history size**: keep 20, 50, or 100 clipboard items.
 - **Polished details**: native material, semantic row icons, image thumbnails, reduced-motion support, and a compact menu bar history view.

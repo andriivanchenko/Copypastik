@@ -200,7 +200,7 @@ struct CopypastikTests {
     @Test func appSettingsUseExpectedDefaults() async throws {
         let settings = AppSettings(defaults: temporaryDefaults(), managesLaunchAtLogin: false)
 
-        #expect(settings.isLaunchAtLoginEnabled)
+        #expect(!settings.isLaunchAtLoginEnabled)
         #expect(settings.isClipboardHistoryEnabled)
         #expect(settings.historyLimit == .twenty)
         #expect(!settings.hasCompletedOnboarding)
@@ -212,14 +212,14 @@ struct CopypastikTests {
         let defaults = temporaryDefaults()
         let settings = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
 
-        settings.isLaunchAtLoginEnabled = false
+        settings.isLaunchAtLoginEnabled = true
         settings.isClipboardHistoryEnabled = false
         settings.historyLimit = .fifty
         settings.pickerShortcut = .commandShiftV
         settings.markOnboardingCompleted()
 
         let restored = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
-        #expect(!restored.isLaunchAtLoginEnabled)
+        #expect(restored.isLaunchAtLoginEnabled)
         #expect(!restored.isClipboardHistoryEnabled)
         #expect(restored.historyLimit == .fifty)
         #expect(restored.pickerShortcut == .commandShiftV)

@@ -94,7 +94,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         self.managesLaunchAtLogin = managesLaunchAtLogin
 
-        isLaunchAtLoginEnabled = Self.boolValue(for: Keys.launchAtLogin, in: defaults, defaultValue: true)
+        isLaunchAtLoginEnabled = Self.boolValue(for: Keys.launchAtLogin, in: defaults, defaultValue: false)
         isClipboardHistoryEnabled = Self.boolValue(for: Keys.clipboardHistory, in: defaults, defaultValue: true)
         historyLimit = Self.historyLimitValue(for: Keys.historyLimit, in: defaults)
         hasCompletedOnboarding = Self.boolValue(for: Keys.hasCompletedOnboarding, in: defaults, defaultValue: false)
