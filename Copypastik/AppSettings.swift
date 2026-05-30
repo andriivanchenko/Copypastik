@@ -94,13 +94,15 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         self.managesLaunchAtLogin = managesLaunchAtLogin
 
-        isLaunchAtLoginEnabled = Self.boolValue(for: Keys.launchAtLogin, in: defaults, defaultValue: false)
+        if managesLaunchAtLogin, #available(macOS 13.0, *) {
+            isLaunchAtLoginEnabled = SMAppService.mainApp.status == .enabled
+        } else {
+            isLaunchAtLoginEnabled = Self.boolValue(for: Keys.launchAtLogin, in: defaults, defaultValue: false)
+        }
         isClipboardHistoryEnabled = Self.boolValue(for: Keys.clipboardHistory, in: defaults, defaultValue: true)
         historyLimit = Self.historyLimitValue(for: Keys.historyLimit, in: defaults)
         hasCompletedOnboarding = Self.boolValue(for: Keys.hasCompletedOnboarding, in: defaults, defaultValue: false)
         pickerShortcut = Self.shortcutValue(for: Keys.pickerShortcut, in: defaults)
-
-        applyLaunchAtLoginPreference()
     }
 
     func markOnboardingCompleted() {
