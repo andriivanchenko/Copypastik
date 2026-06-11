@@ -204,8 +204,8 @@ struct OnboardingView: View {
                 symbolName: "keyboard"
             ),
             OnboardingStep(
-                title: "Paste Text or Images",
-                body: "Choose an item and Copypastik writes it back to your clipboard.",
+                title: "Copy or Paste",
+                body: "Choose an item and Copypastik writes it back to your clipboard. Turn on Automatic Paste later if you want the one-step workflow.",
                 symbolName: "photo.on.rectangle"
             ),
             OnboardingStep(

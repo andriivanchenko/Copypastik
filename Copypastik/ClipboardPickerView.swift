@@ -373,7 +373,7 @@ struct ClipboardPickerView: View {
         ZStack {
             HStack(spacing: 13) {
                 FooterHint(keys: "↑↓", label: "Move")
-                FooterHint(keys: "↵", label: "Paste")
+                FooterHint(keys: "↵", label: "Copy/Paste")
                 FooterHint(keys: "esc", label: "Close")
             }
 

@@ -27,7 +27,7 @@
   <a href="#build-from-source">Build from source</a>
 </p>
 
-Copypastik keeps a small, searchable clipboard history in your menu bar, then lets you paste any saved text or image with a keyboard-first floating picker. Use the default `Control + Option + V` shortcut, switch to `Command + Shift + V` from Settings, and keep the whole workflow private on your Mac.
+Copypastik keeps a small, searchable clipboard history in your menu bar, then lets you copy any saved text or image back to the system clipboard with a keyboard-first floating picker. Use the default `Control + Option + V` shortcut, switch to `Command + Shift + V` from Settings, and keep the whole workflow private on your Mac.
 
 ## Download
 
@@ -38,7 +38,7 @@ Grab the latest `.dmg` from the [Releases page](https://github.com/andriivanchen
 3. Drag `Copypastik.app` into `Applications`.
 4. Launch Copypastik from Applications.
 
-On first launch, macOS may ask for Accessibility permission. Copypastik needs it for the global hotkey and for instant paste into the previously active app.
+Copypastik does not require permission for clipboard history or the global picker shortcut. Automatic Paste is optional; when enabled, macOS requires you to allow Copypastik in System Settings before the app can post Command-V to the previous app. Copypastik never triggers a system permission prompt.
 
 ## Features
 
@@ -46,12 +46,14 @@ On first launch, macOS may ask for Accessibility permission. Copypastik needs it
 - **Text and image history**: stores copied plain text and bitmap images for the current app session.
 - **Smart deduplication**: copying an existing item moves it back to the top instead of creating duplicates.
 - **Fast search**: filter clipboard history in real time.
-- **Keyboard-first workflow**: navigate with arrows, paste with Enter, close with Esc.
+- **Keyboard-first workflow**: navigate with arrows, copy the selected item with Enter, close with Esc.
 - **Inline deletion**: reveal and remove individual items without clearing the full history.
 - **Plain-text paste**: text is pasted without rich formatting, fonts, or copied file payloads.
 - **Menu bar native**: no Dock icon, no extra window clutter, no external dependencies.
 - **Optional launch at login**: enable automatic startup from Settings when you want it.
 - **Configurable shortcut**: switch the picker shortcut to `Command + Shift + V` from Settings.
+- **Optional automatic paste**: off by default; enable it in Settings if you want selected items pasted into the previous app. If access is missing, Copypastik explains where to enable it and still lets you paste manually.
+- **Paste hint**: when Automatic Paste is off or unavailable, a brief nonactivating hint reminds you to press `Command + V`.
 - **Configurable history size**: keep 20, 50, or 100 clipboard items.
 - **Polished details**: native material, semantic row icons, image thumbnails, reduced-motion support, and a compact menu bar history view.
 
@@ -62,14 +64,15 @@ On first launch, macOS may ask for Accessibility permission. Copypastik needs it
 | Open picker | `Control + Option + V` by default; switch to `Command + Shift + V` in Settings |
 | Search history | Type in the search field |
 | Move selection | `Up` / `Down` |
-| Paste selected item | `Enter` |
+| Copy selected item to clipboard | `Enter`; then paste in the target app with `Command + V` |
+| Automatically paste selected item | Enable `Automatic Paste` in Settings, allow Copypastik in System Settings if needed, then press `Enter` |
 | Reveal delete action | `Left` on selected row, or right-click |
 | Delete revealed item | `Left` again, or click the trash button |
 | Hide delete action | `Right`, change selection, or continue typing |
 | Close picker | `Esc` or click outside |
 | Clear all history | Picker trash button, or menu bar icon -> `Clear History` |
 
-If Accessibility permission is missing, Copypastik still copies the selected item back to the clipboard. You can then paste manually with `Command + V`.
+After selection, Copypastik copies the item back to the clipboard and returns focus to the previous app when possible. Paste manually with `Command + V`, or enable Automatic Paste in Settings for the optional one-step workflow.
 
 ## Privacy
 
@@ -78,12 +81,14 @@ Copypastik is intentionally local and small.
 - Clipboard history is kept in memory for the current app session.
 - No account, cloud sync, analytics, or network service is used.
 - Rich text, files, and mixed clipboard payloads are ignored.
-- Accessibility permission is used for the global hotkey and paste automation.
+- The global picker shortcut uses Carbon `RegisterEventHotKey`; Copypastik does not monitor general keyboard input.
+- Automatic Paste posts only Command-V through Core Graphics after a user selects an item and the existing permission state is already granted. If access is missing, Copypastik copies the item, returns focus, and shows the manual paste hint.
 
 ## Requirements
 
 - macOS 14 or later
-- Accessibility permission for global hotkey and instant paste
+- No permission required for clipboard history or the global picker shortcut
+- Optional Automatic Paste requires allowing Copypastik in System Settings
 - Xcode 15 or later if building from source
 
 ## Build From Source
@@ -141,7 +146,7 @@ AppCoordinator              Owns long-lived services
 |
 +-- HotkeyService           Carbon global hotkey registration
 |
-`-- PickerWindowController  Floating panel, keyboard routing, outside-click dismiss, paste
+`-- PickerWindowController  Floating panel, keyboard routing, outside-click dismiss, copy / optional paste
     `-- ClipboardPickerView Search field, semantic rows, inline deletion
 ```
 
@@ -150,7 +155,7 @@ AppCoordinator              Owns long-lived services
 - `NSPasteboard` has no change notification API, so clipboard changes are detected by polling `changeCount`.
 - `RegisterEventHotKey` captures the selected picker shortcut without leaking keystrokes into the active app.
 - `LSUIElement` keeps the app menu-bar-only while preserving native SwiftUI menu bar behavior.
-- Paste confirmation is guarded so one Enter press results in one paste.
+- Selection confirmation is guarded so one Enter press results in one clipboard write, plus optional automatic paste when enabled.
 - Image clipboard items are normalized to bitmap data and displayed with compact metadata.
 - Self-written pasteboard changes are suppressed so selecting an item does not duplicate it in history.
 

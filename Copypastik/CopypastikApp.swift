@@ -5,6 +5,7 @@
 //  Created by Andrii Ivanchenko on 27.04.2026.
 //
 
+import AppKit
 import Combine
 import SwiftUI
 
@@ -21,15 +22,18 @@ final class AppCoordinator: ObservableObject {
     init() {
         print("[Copypastik] app launched")
         store = ClipboardStore(settings: settings)
-        DispatchQueue.main.async {
-            HotkeyService.requestAccessibilityIfNeeded()
-        }
         hotkey.onTrigger = { [weak self] in self?.picker.show() }
         hotkey.start(shortcut: settings.pickerShortcut)
         settings.$pickerShortcut
             .dropFirst()
             .sink { [weak self] shortcut in
                 self?.hotkey.updateShortcut(shortcut)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.settings.refreshPasteAutomationPermission()
             }
             .store(in: &cancellables)
 

@@ -205,6 +205,8 @@ struct CopypastikTests {
         #expect(settings.historyLimit == .twenty)
         #expect(!settings.hasCompletedOnboarding)
         #expect(settings.pickerShortcut == .controlOptionV)
+        #expect(!settings.isAutomaticPasteEnabled)
+        #expect(settings.isPasteHintEnabled)
     }
 
     @MainActor
@@ -216,6 +218,8 @@ struct CopypastikTests {
         settings.isClipboardHistoryEnabled = false
         settings.historyLimit = .fifty
         settings.pickerShortcut = .commandShiftV
+        settings.isAutomaticPasteEnabled = true
+        settings.isPasteHintEnabled = false
         settings.markOnboardingCompleted()
 
         let restored = AppSettings(defaults: defaults, managesLaunchAtLogin: false)
@@ -223,6 +227,8 @@ struct CopypastikTests {
         #expect(!restored.isClipboardHistoryEnabled)
         #expect(restored.historyLimit == .fifty)
         #expect(restored.pickerShortcut == .commandShiftV)
+        #expect(restored.isAutomaticPasteEnabled)
+        #expect(!restored.isPasteHintEnabled)
         #expect(restored.hasCompletedOnboarding)
     }
 

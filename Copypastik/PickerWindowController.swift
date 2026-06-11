@@ -123,6 +123,7 @@ final class PickerWindowController: NSObject, NSWindowDelegate {
     private var previousApp: NSRunningApplication?
     private var pendingDismiss: DispatchWorkItem?
     private var isSelectionInFlight = false
+    private let pasteHintToast = PasteHintToastController()
 
     init(store: ClipboardStore, settings: AppSettings) {
         self.store = store
@@ -170,8 +171,13 @@ final class PickerWindowController: NSObject, NSWindowDelegate {
     }
 
     func dismiss(animated: Bool) {
+        dismiss(animated: animated, completion: nil)
+    }
+
+    private func dismiss(animated: Bool, completion: (() -> Void)?) {
         guard let panel, panel.isVisible else {
             removeKeyMonitor()
+            completion?()
             return
         }
 
@@ -182,8 +188,10 @@ final class PickerWindowController: NSObject, NSWindowDelegate {
         let finish = { [weak self, weak panel] in
             panel?.orderOut(nil)
             panel?.alphaValue = 1
+            self?.pendingDismiss = nil
             self?.state.isClosing = false
             print("[Copypastik] picker closed")
+            completion?()
         }
 
         guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
@@ -354,17 +362,42 @@ final class PickerWindowController: NSObject, NSWindowDelegate {
             isSelectionInFlight = false
             return
         }
-        print("[Copypastik] item selected for paste")
+        print("[Copypastik] item selected and copied to clipboard")
         store.copyItem(filtered[index])
-        dismiss()
-        pasteIntoPreviousApp()
+        settings.refreshPasteAutomationPermission()
+        let shouldPaste = settings.isAutomaticPasteEnabled && settings.hasPostEventAccess
+        dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            if shouldPaste {
+                pasteIntoPreviousApp()
+            } else {
+                reactivatePreviousApp()
+                showManualPasteHintIfNeeded()
+            }
+        }
     }
 
     private func pasteIntoPreviousApp() {
-        guard HotkeyService.isAccessibilityGranted else {
-            showAccessibilityWarning()
+        settings.refreshPasteAutomationPermission()
+        guard settings.isAutomaticPasteEnabled, settings.hasPostEventAccess else {
+            reactivatePreviousApp()
+            showManualPasteHintIfNeeded()
             return
         }
+
+        reactivatePreviousApp()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            PasteAutomationService.postPasteCommand()
+        }
+    }
+
+    private func showManualPasteHintIfNeeded() {
+        guard settings.isPasteHintEnabled else { return }
+        pasteHintToast.show(relativeTo: previousApp)
+    }
+
+    private func reactivatePreviousApp() {
         guard let app = previousApp else { return }
 
         if #available(macOS 14.0, *) {
@@ -372,38 +405,6 @@ final class PickerWindowController: NSObject, NSWindowDelegate {
         } else {
             app.activate(options: .activateIgnoringOtherApps)
         }
-        print("[Copypastik] previous app activation attempted")
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            Self.simulateCmdV()
-        }
-    }
-
-    private static func simulateCmdV() {
-        let src = CGEventSource(stateID: .hidSystemState)
-        let down = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true)
-        let up   = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false)
-        down?.flags = .maskCommand
-        up?.flags   = .maskCommand
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
-        print("[Copypastik] Cmd+V simulated")
-    }
-
-    private func showAccessibilityWarning() {
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = "Your item is on the clipboard — press ⌘V to paste manually.\n\nTo enable instant paste: System Settings → Privacy & Security → Accessibility → enable Copypastik."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open Settings")
-        alert.addButton(withTitle: "OK")
-        if #available(macOS 14.0, *) {
-            NSApp.activate()
-        } else {
-            NSApp.activate(ignoringOtherApps: true)
-        }
-        if alert.runModal() == .alertFirstButtonReturn {
-            settings.openAccessibilitySettings()
-        }
+        print("[Copypastik] previous app activation attempted; item is ready on NSPasteboard")
     }
 }

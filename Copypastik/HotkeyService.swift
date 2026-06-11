@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import Carbon.HIToolbox
 
 final class HotkeyService {
@@ -7,10 +6,6 @@ final class HotkeyService {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
     private var shortcut: PickerShortcut = .controlOptionV
-
-    static var isAccessibilityGranted: Bool {
-        AXIsProcessTrusted()
-    }
 
     func start(shortcut: PickerShortcut = .controlOptionV) {
         guard eventHandlerRef == nil else {
@@ -105,16 +100,6 @@ final class HotkeyService {
 
     deinit {
         stop()
-    }
-
-    /// Prompts the user to grant Accessibility access if not already granted.
-    static func requestAccessibilityIfNeeded() {
-        let granted = isAccessibilityGranted
-        print("[Copypastik] Accessibility permission status: \(granted ? "granted" : "not granted")")
-        guard !granted else { return }
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        let trustedAfterPrompt = AXIsProcessTrustedWithOptions(options)
-        print("[Copypastik] Accessibility permission after prompt: \(trustedAfterPrompt ? "granted" : "not granted")")
     }
 
     private func fourCharCode(from string: String) -> OSType {

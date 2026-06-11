@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 final class StatusItemController: NSObject {
@@ -115,10 +114,9 @@ struct SettingsPopoverView: View {
     let onShowOnboarding: () -> Void
     let onQuit: () -> Void
 
-    @State private var accessibilityGranted = HotkeyService.isAccessibilityGranted
-    @State private var isPopoverVisible = false
     @State private var showsLaunchAtLoginConfirmation = false
-    private let accessibilityRefreshTimer = Timer.publish(every: 0.75, on: .main, in: .common).autoconnect()
+    @State private var showsAutomaticPastePermissionSheet = false
+    @State private var shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -141,20 +139,6 @@ struct SettingsPopoverView: View {
         }
         .frame(width: 320, height: 420)
         .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear {
-            isPopoverVisible = true
-            refreshAccessibilityStatus()
-        }
-        .onDisappear {
-            isPopoverVisible = false
-        }
-        .onReceive(accessibilityRefreshTimer) { _ in
-            guard isPopoverVisible else { return }
-            refreshAccessibilityStatus()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            refreshAccessibilityStatus()
-        }
         .alert("Launch at Login?", isPresented: $showsLaunchAtLoginConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Enable") {
@@ -162,6 +146,18 @@ struct SettingsPopoverView: View {
             }
         } message: {
             Text("Open Copypastik automatically when you log in to your Mac?")
+        }
+        .sheet(
+            isPresented: $showsAutomaticPastePermissionSheet,
+            onDismiss: handleAutomaticPastePermissionSheetDismiss
+        ) {
+            AutomaticPastePermissionSheet(
+                onOpenSystemSettings: openAutomaticPasteSystemSettings,
+                onNotNow: cancelAutomaticPasteEnablement
+            )
+        }
+        .onAppear {
+            settings.refreshPasteAutomationPermission()
         }
     }
 
@@ -193,37 +189,12 @@ struct SettingsPopoverView: View {
             SettingsRowDivider()
 
             SettingsInfoRow(
-                symbolName: accessibilityGranted ? "checkmark.shield" : "exclamationmark.shield",
-                title: "Accessibility",
-                subtitle: accessibilityGranted ? "Granted" : "Needed for instant paste",
-                tint: accessibilityGranted ? CopypastikTheme.success : CopypastikTheme.warning,
-                trailing: {
-                    if !accessibilityGranted {
-                        Button("Open") {
-                            settings.openAccessibilitySettings()
-                            refreshAccessibilityStatus()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                }
-            )
-
-            SettingsRowDivider()
-
-            SettingsInfoRow(
                 symbolName: "lock",
                 title: "Privacy",
                 subtitle: "Clipboard history stays on this Mac.",
                 tint: Color.accentColor
             )
         }
-    }
-
-    private func refreshAccessibilityStatus() {
-        let granted = HotkeyService.isAccessibilityGranted
-        guard accessibilityGranted != granted else { return }
-        accessibilityGranted = granted
     }
 
     private var behaviorSection: some View {
@@ -248,8 +219,85 @@ struct SettingsPopoverView: View {
 
             SettingsRowDivider()
 
+            SettingsToggleRow(
+                symbolName: "command",
+                title: "Automatic Paste",
+                subtitle: automaticPasteSubtitle,
+                tint: Color.accentColor,
+                isOn: automaticPasteBinding
+            )
+
+            SettingsRowDivider()
+
+            SettingsToggleRow(
+                symbolName: "text.bubble",
+                title: "Show paste hint",
+                subtitle: "Show a brief hint after copying for manual paste.",
+                tint: Color.accentColor,
+                isOn: $settings.isPasteHintEnabled
+            )
+
+            SettingsRowDivider()
+
             SettingsHistoryLimitRow(historyLimit: $settings.historyLimit)
         }
+    }
+
+    private var automaticPasteSubtitle: String {
+        if !settings.isAutomaticPasteEnabled {
+            return "Off by default; selected items stay on the clipboard."
+        }
+
+        if settings.hasPostEventAccess {
+            return "Pastes into the previous app after selection."
+        }
+
+        return "Allow Copypastik in System Settings to paste automatically."
+    }
+
+    private var automaticPasteBinding: Binding<Bool> {
+        Binding(
+            get: {
+                settings.isAutomaticPasteEnabled
+            },
+            set: { newValue in
+                guard newValue else {
+                    shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
+                    showsAutomaticPastePermissionSheet = false
+                    settings.isAutomaticPasteEnabled = false
+                    return
+                }
+
+                settings.refreshPasteAutomationPermission()
+                settings.isAutomaticPasteEnabled = true
+
+                if !settings.hasPostEventAccess {
+                    shouldRevertAutomaticPasteOnPermissionSheetDismiss = true
+                    showsAutomaticPastePermissionSheet = true
+                }
+            }
+        )
+    }
+
+    private func openAutomaticPasteSystemSettings() {
+        shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
+        showsAutomaticPastePermissionSheet = false
+
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func cancelAutomaticPasteEnablement() {
+        shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
+        settings.isAutomaticPasteEnabled = false
+        showsAutomaticPastePermissionSheet = false
+    }
+
+    private func handleAutomaticPastePermissionSheetDismiss() {
+        guard shouldRevertAutomaticPasteOnPermissionSheetDismiss else { return }
+        settings.isAutomaticPasteEnabled = false
+        shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
     }
 
     private var onboardingBanner: some View {
@@ -342,6 +390,37 @@ struct SettingsPopoverView: View {
                 }
             }
         )
+    }
+}
+
+private struct AutomaticPastePermissionSheet: View {
+    let onOpenSystemSettings: () -> Void
+    let onNotNow: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Enable Automatic Paste")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text("To paste automatically, macOS requires you to allow Copypastik in System Settings → Privacy & Security → Accessibility. Without this, selected items are still copied to the clipboard and you can paste them with ⌘V.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Spacer()
+
+                Button("Not Now", role: .cancel, action: onNotNow)
+                    .keyboardShortcut(.cancelAction)
+
+                Button("Open System Settings", action: onOpenSystemSettings)
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(22)
+        .frame(width: 440)
     }
 }
 

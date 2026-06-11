@@ -54,6 +54,8 @@ final class AppSettings: ObservableObject {
         static let historyLimit = "settings.historyLimit"
         static let hasCompletedOnboarding = "settings.hasCompletedOnboarding"
         static let pickerShortcut = "settings.pickerShortcut"
+        static let automaticPaste = "settings.automaticPaste"
+        static let pasteHint = "settings.pasteHint"
     }
 
     @Published var isLaunchAtLoginEnabled: Bool {
@@ -87,6 +89,20 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var isAutomaticPasteEnabled: Bool {
+        didSet {
+            defaults.set(isAutomaticPasteEnabled, forKey: Keys.automaticPaste)
+        }
+    }
+
+    @Published var isPasteHintEnabled: Bool {
+        didSet {
+            defaults.set(isPasteHintEnabled, forKey: Keys.pasteHint)
+        }
+    }
+
+    @Published private(set) var hasPostEventAccess: Bool
+
     private let defaults: UserDefaults
     private let managesLaunchAtLogin: Bool
 
@@ -103,27 +119,17 @@ final class AppSettings: ObservableObject {
         historyLimit = Self.historyLimitValue(for: Keys.historyLimit, in: defaults)
         hasCompletedOnboarding = Self.boolValue(for: Keys.hasCompletedOnboarding, in: defaults, defaultValue: false)
         pickerShortcut = Self.shortcutValue(for: Keys.pickerShortcut, in: defaults)
+        isAutomaticPasteEnabled = Self.boolValue(for: Keys.automaticPaste, in: defaults, defaultValue: false)
+        isPasteHintEnabled = Self.boolValue(for: Keys.pasteHint, in: defaults, defaultValue: true)
+        hasPostEventAccess = PasteAutomationService.hasPostEventAccess
     }
 
     func markOnboardingCompleted() {
         hasCompletedOnboarding = true
     }
 
-    func openAccessibilitySettings() {
-        HotkeyService.requestAccessibilityIfNeeded()
-
-        let settingsURLs = [
-            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
-            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-            "x-apple.systempreferences:com.apple.SystemPreferences"
-        ]
-
-        for settingsURL in settingsURLs {
-            guard let url = URL(string: settingsURL) else { continue }
-            if NSWorkspace.shared.open(url) {
-                return
-            }
-        }
+    func refreshPasteAutomationPermission() {
+        hasPostEventAccess = PasteAutomationService.hasPostEventAccess
     }
 
     private func applyLaunchAtLoginPreference() {
