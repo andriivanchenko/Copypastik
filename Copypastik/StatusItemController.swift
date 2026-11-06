@@ -1,29 +1,42 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
     private let historyPopover = NSPopover()
     private let settingsPopover = NSPopover()
+    private let pasteHintToast = PasteHintToastController()
     private let settings: AppSettings
     private let store: ClipboardStore
+    private let onOpenPicker: () -> Void
+    private let onOpenLibrary: () -> Void
+    private let onEditSnippetTags: (ClipboardHistoryItem) -> Void
     private let onShowOnboarding: () -> Void
     private let onQuit: () -> Void
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         store: ClipboardStore,
         settings: AppSettings,
+        onOpenPicker: @escaping () -> Void,
+        onOpenLibrary: @escaping () -> Void,
+        onEditSnippetTags: @escaping (ClipboardHistoryItem) -> Void,
         onShowOnboarding: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
         self.store = store
         self.settings = settings
+        self.onOpenPicker = onOpenPicker
+        self.onOpenLibrary = onOpenLibrary
+        self.onEditSnippetTags = onEditSnippetTags
         self.onShowOnboarding = onShowOnboarding
         self.onQuit = onQuit
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         configureStatusItem()
         configurePopovers()
+        observeCaptureState()
     }
 
     private func configureStatusItem() {
@@ -44,13 +57,39 @@ final class StatusItemController: NSObject {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
 
+    private func observeCaptureState() {
+        settings.$capturePausedUntil
+            .combineLatest(settings.$isCapturePausedIndefinitely)
+            .sink { [weak self] _, _ in
+                self?.refreshPausedIndicator()
+            }
+            .store(in: &cancellables)
+        refreshPausedIndicator()
+    }
+
+    private func refreshPausedIndicator() {
+        guard let button = statusItem.button else { return }
+        if settings.isCapturePaused {
+            button.imagePosition = .imageLeading
+            button.title = " ⏸"
+            button.toolTip = settings.capturePauseStatusText ?? "Capture paused"
+        } else {
+            button.imagePosition = .imageOnly
+            button.title = ""
+            button.toolTip = "Copypastik"
+        }
+    }
+
     private func configurePopovers() {
         historyPopover.behavior = .transient
         historyPopover.animates = true
         historyPopover.contentSize = NSSize(width: 320, height: 420)
         historyPopover.contentViewController = NSHostingController(
-            rootView: ContentView()
-                .environmentObject(store)
+            rootView: ContentView(onOpenLibrary: { [weak self] in
+                self?.historyPopover.performClose(nil)
+                self?.onOpenLibrary()
+            })
+            .environmentObject(store)
         )
 
         settingsPopover.behavior = .transient
@@ -81,7 +120,7 @@ final class StatusItemController: NSObject {
 
         switch event.type {
         case .rightMouseUp:
-            toggleSettingsPopover(from: sender)
+            showCommandMenu(from: sender, event: event)
         default:
             toggleHistoryPopover(from: sender)
         }
@@ -105,6 +144,196 @@ final class StatusItemController: NSObject {
             settingsPopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
+
+    private func showCommandMenu(from button: NSStatusBarButton, event: NSEvent) {
+        historyPopover.performClose(nil)
+        settingsPopover.performClose(nil)
+        NSMenu.popUpContextMenu(makeCommandMenu(), with: event, for: button)
+    }
+
+    private func makeCommandMenu() -> NSMenu {
+        let menu = NSMenu()
+
+        let openPickerItem = NSMenuItem(title: "Open Picker", action: #selector(openPickerFromMenu), keyEquivalent: "")
+        openPickerItem.target = self
+        menu.addItem(openPickerItem)
+
+        let openLibraryItem = NSMenuItem(title: "Open Library", action: #selector(openLibraryFromMenu), keyEquivalent: "")
+        openLibraryItem.target = self
+        menu.addItem(openLibraryItem)
+
+        let snippetsItem = NSMenuItem(title: "Snippets", action: nil, keyEquivalent: "")
+        snippetsItem.submenu = makeSnippetsMenu()
+        menu.addItem(snippetsItem)
+
+        menu.addItem(.separator())
+
+        if settings.isCapturePaused {
+            let statusItem = NSMenuItem(title: settings.capturePauseStatusText ?? "Capture paused", action: nil, keyEquivalent: "")
+            statusItem.isEnabled = false
+            menu.addItem(statusItem)
+
+            let resumeItem = NSMenuItem(title: "Resume Capture", action: #selector(resumeCaptureFromMenu), keyEquivalent: "")
+            resumeItem.target = self
+            menu.addItem(resumeItem)
+        } else {
+            let pauseItem = NSMenuItem(title: "Pause Capture", action: nil, keyEquivalent: "")
+            pauseItem.submenu = makePauseCaptureMenu()
+            menu.addItem(pauseItem)
+        }
+
+        menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettingsFromMenu), keyEquivalent: "")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
+        let quitItem = NSMenuItem(title: "Quit Copypastik", action: #selector(quitFromMenu), keyEquivalent: "")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        return menu
+    }
+
+    private func makePauseCaptureMenu() -> NSMenu {
+        let menu = NSMenu()
+        for duration in CapturePauseDuration.allCases {
+            let item = NSMenuItem(title: duration.displayName, action: #selector(pauseCaptureFromMenu(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = duration
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func pauseCaptureFromMenu(_ sender: NSMenuItem) {
+        guard let duration = sender.representedObject as? CapturePauseDuration else { return }
+        settings.pauseCapture(for: duration)
+    }
+
+    @objc private func resumeCaptureFromMenu() {
+        settings.resumeCapture()
+    }
+
+    private func makeSnippetsMenu() -> NSMenu {
+        let menu = NSMenu()
+        let tags = store.allTags
+
+        guard !tags.isEmpty else {
+            let hint = NSMenuItem(title: "Tag items in the picker with Cmd+T", action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            menu.addItem(hint)
+            return menu
+        }
+
+        for tag in tags {
+            let tagItem = NSMenuItem(title: "#\(tag)", action: nil, keyEquivalent: "")
+            let tagMenu = NSMenu()
+
+            for item in store.taggedItems(for: tag) {
+                let snippetItem = NSMenuItem(title: menuPreview(for: item), action: #selector(handleSnippetMenuItem(_:)), keyEquivalent: "")
+                snippetItem.target = self
+                snippetItem.representedObject = item
+                snippetItem.image = menuImage(for: item)
+                tagMenu.addItem(snippetItem)
+            }
+
+            tagItem.submenu = tagMenu
+            menu.addItem(tagItem)
+        }
+
+        return menu
+    }
+
+    private func menuPreview(for item: ClipboardHistoryItem) -> String {
+        if let text = item.textValue {
+            let singleLine = text
+                .replacingOccurrences(of: "\n", with: " ")
+                .replacingOccurrences(of: "\t", with: " ")
+            guard singleLine.count > 40 else { return singleLine }
+            return "\(singleLine.prefix(39))…"
+        }
+
+        return "[Image]"
+    }
+
+    private func menuImage(for item: ClipboardHistoryItem) -> NSImage? {
+        guard let image = item.imageValue?.nsImage else { return nil }
+        image.size = NSSize(width: 16, height: 16)
+        return image
+    }
+
+    @objc private func openPickerFromMenu() {
+        onOpenPicker()
+    }
+
+    @objc private func openLibraryFromMenu() {
+        onOpenLibrary()
+    }
+
+    @objc private func openSettingsFromMenu() {
+        guard let button = statusItem.button else { return }
+        toggleSettingsPopover(from: button)
+    }
+
+    @objc private func quitFromMenu() {
+        onQuit()
+    }
+
+    @objc private func handleSnippetMenuItem(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem else { return }
+
+        if NSApp.currentEvent?.modifierFlags.contains(.option) == true {
+            showSnippetContextMenu(for: item)
+            return
+        }
+
+        copySnippet(item)
+    }
+
+    private func showSnippetContextMenu(for item: ClipboardHistoryItem) {
+        guard let button = statusItem.button, let event = NSApp.currentEvent else { return }
+        let menu = NSMenu()
+
+        let editItem = NSMenuItem(title: "Edit Tags...", action: #selector(editSnippetTags(_:)), keyEquivalent: "")
+        editItem.target = self
+        editItem.representedObject = item
+        menu.addItem(editItem)
+
+        let removeTagsItem = NSMenuItem(title: "Remove All Tags", action: #selector(removeSnippetTags(_:)), keyEquivalent: "")
+        removeTagsItem.target = self
+        removeTagsItem.representedObject = item
+        menu.addItem(removeTagsItem)
+
+        let deleteItem = NSMenuItem(title: "Delete", action: #selector(deleteSnippet(_:)), keyEquivalent: "")
+        deleteItem.target = self
+        deleteItem.representedObject = item
+        menu.addItem(deleteItem)
+
+        NSMenu.popUpContextMenu(menu, with: event, for: button)
+    }
+
+    private func copySnippet(_ item: ClipboardHistoryItem) {
+        let previousApp = NSWorkspace.shared.frontmostApplication
+        store.copyItem(item)
+        guard settings.isPasteHintEnabled else { return }
+        pasteHintToast.show(relativeTo: previousApp)
+    }
+
+    @objc private func editSnippetTags(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem else { return }
+        onEditSnippetTags(item)
+    }
+
+    @objc private func removeSnippetTags(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem else { return }
+        store.removeAllTags(from: item)
+    }
+
+    @objc private func deleteSnippet(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem else { return }
+        store.deleteItem(item)
+    }
 }
 
 struct SettingsPopoverView: View {
@@ -117,6 +346,7 @@ struct SettingsPopoverView: View {
     @State private var showsLaunchAtLoginConfirmation = false
     @State private var showsAutomaticPastePermissionSheet = false
     @State private var shouldRevertAutomaticPasteOnPermissionSheetDismiss = false
+    @State private var showsClearTaggedConfirmation = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -130,6 +360,7 @@ struct SettingsPopoverView: View {
                     onboardingBanner
                     statusSection
                     behaviorSection
+                    privacySection
                     actionsSection
                 }
                 .padding(.horizontal, 12)
@@ -146,6 +377,14 @@ struct SettingsPopoverView: View {
             }
         } message: {
             Text("Open Copypastik automatically when you log in to your Mac?")
+        }
+        .alert("Clear Tagged Snippets?", isPresented: $showsClearTaggedConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear", role: .destructive) {
+                store.clearTaggedItems()
+            }
+        } message: {
+            Text("Remove all locally stored tagged snippets from this Mac?")
         }
         .sheet(
             isPresented: $showsAutomaticPastePermissionSheet,
@@ -191,7 +430,9 @@ struct SettingsPopoverView: View {
             SettingsInfoRow(
                 symbolName: "lock",
                 title: "Privacy",
-                subtitle: "Clipboard history stays on this Mac.",
+                subtitle: settings.isHistoryPersistenceEnabled
+                    ? "Everything stays on this Mac. History is saved locally for the Library; paused and ignored apps are never recorded."
+                    : "History is memory-only; tagged snippets and pins are stored locally.",
                 tint: Color.accentColor
             )
         }
@@ -230,6 +471,26 @@ struct SettingsPopoverView: View {
             SettingsRowDivider()
 
             SettingsToggleRow(
+                symbolName: "text.viewfinder",
+                title: "Recognize Text in Images",
+                subtitle: "Finds text in copied images so you can search it. Runs on this Mac with Apple Vision; nothing is uploaded.",
+                tint: Color.accentColor,
+                isOn: $settings.isImageTextRecognitionEnabled
+            )
+
+            SettingsRowDivider()
+
+            SettingsToggleRow(
+                symbolName: "externaldrive",
+                title: "Keep History Between Launches",
+                subtitle: "Saves history in this app's local storage for the Library. Off keeps it in memory only.",
+                tint: Color.accentColor,
+                isOn: $settings.isHistoryPersistenceEnabled
+            )
+
+            SettingsRowDivider()
+
+            SettingsToggleRow(
                 symbolName: "text.bubble",
                 title: "Show paste hint",
                 subtitle: "Show a brief hint after copying for manual paste.",
@@ -241,6 +502,58 @@ struct SettingsPopoverView: View {
 
             SettingsHistoryLimitRow(historyLimit: $settings.historyLimit)
         }
+    }
+
+    private var privacySection: some View {
+        SettingsSection(title: "Privacy") {
+            pauseCaptureRow
+
+            SettingsRowDivider()
+
+            IgnoredAppsEditor(settings: settings)
+        }
+    }
+
+    private var pauseCaptureRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                SettingsIcon(
+                    symbolName: settings.isCapturePaused ? "pause.circle.fill" : "pause.circle",
+                    tint: settings.isCapturePaused ? .orange : Color.accentColor
+                )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pause Capture")
+                        .font(.system(size: 12.5, weight: .medium))
+                    Text(settings.capturePauseStatusText ?? "New clipboard items are being saved.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            if settings.isCapturePaused {
+                Button("Resume Capture") {
+                    settings.resumeCapture()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                HStack(spacing: 6) {
+                    ForEach(CapturePauseDuration.allCases) { duration in
+                        Button(duration.displayName) {
+                            settings.pauseCapture(for: duration)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     private var automaticPasteSubtitle: String {
@@ -365,6 +678,22 @@ struct SettingsPopoverView: View {
 
             SettingsRowDivider()
 
+            Button {
+                showsClearTaggedConfirmation = true
+            } label: {
+                SettingsActionContent(
+                    symbolName: "tag.slash",
+                    title: "Clear Tagged Snippets",
+                    subtitle: store.taggedItems.isEmpty ? "No tagged snippets saved." : "Remove \(store.taggedItems.count) local snippets.",
+                    tint: .red
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(store.taggedItems.isEmpty)
+            .opacity(store.taggedItems.isEmpty ? 0.55 : 1)
+
+            SettingsRowDivider()
+
             Button(action: onQuit) {
                 SettingsActionContent(
                     symbolName: "xmark.circle",
@@ -458,6 +787,77 @@ private struct SettingsRowDivider: View {
             .fill(Color.primary.opacity(0.07))
             .frame(height: 0.75)
             .padding(.leading, 42)
+    }
+}
+
+private struct IgnoredAppsEditor: View {
+    @ObservedObject var settings: AppSettings
+    @State private var newBundleID: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                SettingsIcon(symbolName: "eye.slash", tint: .red)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ignored Apps")
+                        .font(.system(size: 12.5, weight: .medium))
+                    Text("Clipboard changes from these apps are never saved.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            if settings.ignoredAppBundleIDs.isEmpty {
+                Text("No ignored apps.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            } else {
+                VStack(spacing: 4) {
+                    ForEach(settings.ignoredAppBundleIDs.sorted(), id: \.self) { bundleID in
+                        HStack(spacing: 6) {
+                            Text(bundleID)
+                                .font(.system(size: 10.5, design: .monospaced))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+
+                            Spacer()
+
+                            Button {
+                                settings.removeIgnoredApp(bundleID: bundleID)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            HStack(spacing: 6) {
+                TextField("com.example.app", text: $newBundleID)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11.5))
+                    .onSubmit(addIgnoredApp)
+
+                Button("Add", action: addIgnoredApp)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(newBundleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private func addIgnoredApp() {
+        guard !newBundleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        settings.addIgnoredApp(bundleID: newBundleID)
+        newBundleID = ""
     }
 }
 

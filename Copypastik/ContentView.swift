@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var copiedItem: ClipboardHistoryItem?
     @State private var copiedFeedbackGeneration = 0
 
+    var onOpenLibrary: (() -> Void)?
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -33,7 +35,7 @@ struct ContentView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
-                        ForEach(Array(store.items.enumerated()), id: \.element) { index, item in
+                        ForEach(Array(store.items.enumerated()), id: \.element.id) { index, item in
                             ClipboardItemRow(
                                 item: item,
                                 isSelected: false,
@@ -43,12 +45,12 @@ struct ContentView: View {
                                 isDeleting: false,
                                 showsReturnGlyph: false,
                                 showsCardFill: true,
-                                selectionNamespace: nil,
                                 revealDelay: 0,
                                 isClearing: clearingItems.contains(item),
                                 clearDelay: clearDelay(for: index),
                                 showsCopiedConfirmation: copiedItem == item,
                                 reduceMotion: reduceMotion,
+                                tagColorProvider: { TagColor.automatic(for: $0) },
                                 onRevealDelete: {},
                                 onBeginDelete: {},
                                 onConfirmDelete: {}
@@ -60,7 +62,7 @@ struct ContentView: View {
                         }
                     }
                     .padding(10)
-                    .animation(listAnimation, value: store.items)
+                    .animation(listAnimation, value: store.items.map(\.id))
                 }
                 .scrollIndicators(.never)
             }
@@ -88,6 +90,17 @@ struct ContentView: View {
             Text("\(store.items.count) \(store.items.count == 1 ? "item" : "items")")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+
+            if let onOpenLibrary {
+                Button(action: onOpenLibrary) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .help("Open Library (⌃⌥L)")
+                .accessibilityLabel("Open Library")
+            }
         }
         .padding(.horizontal, 12)
         .frame(height: 42)

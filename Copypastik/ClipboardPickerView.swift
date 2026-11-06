@@ -9,130 +9,6 @@ enum CopypastikTheme {
     static let success = Color(red: 0.18, green: 0.68, blue: 0.35)
 }
 
-private enum ClipboardHeuristics {
-    static let webLinkPrefixes = ["http://", "https://"]
-    static let terminalPromptPrefixes = ["$ ", "> "]
-    static let shellCommandPrefixes = ["git ", "npm ", "pnpm ", "yarn ", "swift ", "xcodebuild ", "curl ", "uv ", "cd ", "mkdir ", "rm "]
-    static let pathIndicators = ["/", "\\", ".swift", ".json", ".md", ".js", ".ts", ".py", ".sh", ".env"]
-    static let codeSymbols = [" = ", " == ", " != ", "->", "::", "()", " && ", " || "]
-
-    static func hasWebLinkPrefix(_ lowercasedText: String) -> Bool {
-        webLinkPrefixes.contains(where: { lowercasedText.hasPrefix($0) })
-    }
-
-    static func hasCommandPrefix(_ lowercasedText: String, includePromptPrefixes: Bool) -> Bool {
-        if includePromptPrefixes,
-           terminalPromptPrefixes.contains(where: { lowercasedText.hasPrefix($0) }) {
-            return true
-        }
-        return shellCommandPrefixes.contains(where: { lowercasedText.hasPrefix($0) })
-    }
-
-    static func hasPathIndicator(_ text: String) -> Bool {
-        pathIndicators.contains(where: { text.contains($0) })
-    }
-
-    static func hasCodeSymbol(_ text: String) -> Bool {
-        codeSymbols.contains(where: { text.contains($0) })
-    }
-}
-
-enum ClipboardSnippetDetector {
-    static func isCodeLike(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !trimmed.contains(where: \.isNewline) else { return false }
-
-        let lowercased = trimmed.lowercased()
-        if ClipboardHeuristics.hasWebLinkPrefix(lowercased) {
-            return true
-        }
-
-        if ClipboardHeuristics.hasCommandPrefix(lowercased, includePromptPrefixes: true) ||
-            trimmed.hasPrefix("./") ||
-            trimmed.hasPrefix("~/") {
-            return true
-        }
-
-        if (trimmed.hasPrefix("{") && trimmed.hasSuffix("}")) || (trimmed.hasPrefix("[") && trimmed.hasSuffix("]")) {
-            return true
-        }
-
-        if ClipboardHeuristics.hasPathIndicator(trimmed) && !trimmed.contains(" ") {
-            return true
-        }
-
-        return ClipboardHeuristics.hasCodeSymbol(trimmed)
-    }
-}
-
-enum ClipboardItemKind {
-    case command
-    case link
-    case code
-    case multiline
-    case text
-
-    var displayName: String {
-        switch self {
-        case .command:
-            return "Command"
-        case .link:
-            return "Link"
-        case .code:
-            return "Code"
-        case .multiline, .text:
-            return "Text"
-        }
-    }
-
-    var symbolName: String {
-        switch self {
-        case .command:
-            return "terminal"
-        case .link:
-            return "link"
-        case .code:
-            return "curlybraces"
-        case .multiline:
-            return "text.alignleft"
-        case .text:
-            return "text.quote"
-        }
-    }
-
-    var usesMonospacedPreview: Bool {
-        switch self {
-        case .command, .code:
-            return true
-        case .link, .multiline, .text:
-            return false
-        }
-    }
-
-    static func detect(_ text: String) -> ClipboardItemKind {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lowercased = trimmed.lowercased()
-
-        if ClipboardHeuristics.hasWebLinkPrefix(lowercased) {
-            return .link
-        }
-
-        if trimmed.contains(where: \.isNewline) {
-            return .multiline
-        }
-
-        if ClipboardHeuristics.hasCommandPrefix(lowercased, includePromptPrefixes: true) {
-            return .command
-        }
-
-        if ClipboardSnippetDetector.isCodeLike(text) {
-            return .code
-        }
-
-        return .text
-    }
-}
-
 struct ClipboardItemPresentation {
     let text: String
     let kind: ClipboardItemKind
@@ -208,19 +84,26 @@ private struct LiquidGlassBackdrop: NSViewRepresentable {
 
 struct ClipboardPickerView: View {
     @ObservedObject var state: PickerState
+    @ObservedObject var settings: AppSettings
     let onSelect: (Int) -> Void
     let onRevealDelete: (Int) -> Void
     let onBeginDelete: (Int) -> Void
     let onConfirmDelete: (ClipboardHistoryItem) -> Void
     let onMoveSelection: (Int) -> Void
     let onConfirmSelection: () -> Void
+    let onToggleTaggedSection: () -> Void
+    let onSelectTagChip: (PickerTagChip) -> Void
+    let onSelectTypeFilter: (PickerTypeFilter) -> Void
+    let onTogglePin: (ClipboardHistoryItem) -> Void
+    let onBeginTagEdit: (Int) -> Void
+    let onCommitTagEdit: () -> Void
+    let onCancelTagEdit: () -> Void
     let onClearHistory: () -> Void
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isSearchFocused: Bool
-    @Namespace private var selectionNamespace
     @State private var hasAppeared = false
     @State private var clearingItems = Set<ClipboardHistoryItem>()
     @State private var isClearingHistory = false
@@ -244,6 +127,13 @@ struct ClipboardPickerView: View {
         .clipShape(RoundedRectangle(cornerRadius: PickerTheme.cornerRadius, style: .continuous))
         .overlay(windowGlassOverlay)
         .overlay(windowBorder)
+        .overlay(alignment: .bottom) {
+            if let notice = state.notice {
+                PickerNotice(text: notice)
+                    .padding(.bottom, 34)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
         .shadow(color: .black.opacity(rootShadowOpacity), radius: rootShadowRadius, x: 0, y: rootShadowYOffset)
         .scaleEffect(rootScale)
         .opacity(rootOpacity)
@@ -266,6 +156,13 @@ struct ClipboardPickerView: View {
         .onChange(of: state.searchFocusTrigger) { _, _ in
             focusSearchField()
         }
+        .onChange(of: state.editingTagsItem) { _, newItem in
+            if newItem != nil {
+                isSearchFocused = false
+            } else {
+                focusSearchField()
+            }
+        }
     }
 
     private var searchHeader: some View {
@@ -275,7 +172,7 @@ struct ClipboardPickerView: View {
                     .foregroundStyle(.secondary)
                     .font(.system(size: 12, weight: .medium))
 
-                TextField("Search history...", text: $state.query)
+                TextField("Search, #tag, @app, type:...", text: $state.query)
                     .onSubmit(onConfirmSelection)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
@@ -310,7 +207,7 @@ struct ClipboardPickerView: View {
 
     @ViewBuilder
     private var pickerContent: some View {
-        if state.filteredItems.isEmpty {
+        if state.filteredItems.isEmpty && state.taggedItems.isEmpty && state.pinnedItems.isEmpty {
             EmptyPickerState(
                 hasQuery: !state.normalizedQuery.isEmpty,
                 reduceMotion: reduceMotion
@@ -321,48 +218,80 @@ struct ClipboardPickerView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 4) {
-                        ForEach(Array(state.filteredItems.enumerated()), id: \.element) { index, item in
-                            ClipboardItemRow(
-                                item: item,
-                                isSelected: index == state.selectedIndex,
-                                isPressed: index == state.pressedIndex,
-                                isNewest: state.normalizedQuery.isEmpty && index == 0,
-                                isDeleteRevealed: state.revealedDeleteItem == item,
-                                isDeleting: state.deletingItem == item,
-                                showsReturnGlyph: true,
-                                showsCardFill: false,
-                                selectionNamespace: reduceMotion ? nil : selectionNamespace,
-                                revealDelay: revealDelay(for: index),
-                                isClearing: clearingItems.contains(item),
-                                clearDelay: clearDelay(for: index),
-                                showsCopiedConfirmation: false,
-                                reduceMotion: reduceMotion,
-                                onRevealDelete: {
-                                    onRevealDelete(index)
-                                },
-                                onBeginDelete: {
-                                    onBeginDelete(index)
-                                },
-                                onConfirmDelete: {
-                                    onConfirmDelete(item)
-                                }
-                            ) {
-                                onSelect(index)
+                        if state.isTypeFilterBarVisible {
+                            typeFilterBar
+                                .padding(.bottom, 2)
+                        }
+
+                        if state.isTagFilterBarVisible {
+                            tagFilterBar
+                                .padding(.bottom, 2)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        if !state.filteredPinnedItems.isEmpty {
+                            SectionHeader(
+                                title: "Pinned",
+                                count: state.filteredPinnedItems.count,
+                                isCollapsed: false,
+                                onToggle: {}
+                            )
+                            .allowsHitTesting(false)
+                        }
+
+                        ForEach(Array(state.filteredPinnedItems.enumerated()), id: \.element.id) { index, item in
+                            pickerRow(item: item, index: index, section: "pinned", isHistoryNewest: false)
+                        }
+
+                        if !state.taggedItems.isEmpty {
+                            SectionHeader(
+                                title: "Tagged",
+                                count: state.shouldShowTaggedRows ? state.filteredTaggedItems.count : state.taggedItems.count,
+                                isCollapsed: !state.shouldShowTaggedRows,
+                                onToggle: onToggleTaggedSection
+                            )
+                        }
+
+                        if state.shouldShowTaggedRows {
+                            ForEach(Array(state.filteredTaggedItems.enumerated()), id: \.element.id) { index, item in
+                                pickerRow(item: item, index: state.filteredPinnedItems.count + index, section: "tagged", isHistoryNewest: false)
                             }
-                            .id(item.id)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
+
+                        if !state.filteredHistoryItems.isEmpty {
+                            SectionHeader(
+                                title: "History",
+                                count: state.filteredHistoryItems.count,
+                                isCollapsed: false,
+                                onToggle: {}
+                            )
+                            .allowsHitTesting(false)
+                        }
+
+                        ForEach(Array(state.filteredHistoryItems.enumerated()), id: \.element.id) { localIndex, item in
+                            pickerRow(
+                                item: item,
+                                index: state.filteredPinnedItems.count + state.filteredTaggedItems.count + localIndex,
+                                section: "history",
+                                isHistoryNewest: state.normalizedQuery.isEmpty
+                                    && state.activeTagFilters.isEmpty
+                                    && state.activeTypeFilter == .all
+                                    && localIndex == 0
+                            )
                         }
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .animation(selectionAnimation, value: state.selectedIndex)
+                    .animation(filterAnimation, value: state.isTagFilterBarVisible)
                 }
                 .scrollIndicators(.never)
-                .animation(filterAnimation, value: state.filteredItems)
+                .animation(filterAnimation, value: state.filteredItemIDs)
                 .onChange(of: state.selectedIndex) { _, newIndex in
                     scroll(to: newIndex, with: proxy)
                 }
-                .onChange(of: state.filteredItems) { _, _ in
+                .onChange(of: state.filteredItemIDs) { _, _ in
+                    guard state.editingTagsItem == nil else { return }
                     scroll(to: state.selectedIndex, with: proxy)
                 }
             }
@@ -371,9 +300,11 @@ struct ClipboardPickerView: View {
 
     private var footer: some View {
         ZStack {
-            HStack(spacing: 13) {
+            HStack(spacing: 10) {
                 FooterHint(keys: "↑↓", label: "Move")
-                FooterHint(keys: "↵", label: "Copy/Paste")
+                FooterHint(keys: "↵", label: "Copy")
+                FooterHint(keys: "⌘P", label: "Pin")
+                FooterHint(keys: "⌘T", label: "Tags")
                 FooterHint(keys: "esc", label: "Close")
             }
 
@@ -431,6 +362,169 @@ struct ClipboardPickerView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+        }
+    }
+
+    private var typeFilterBar: some View {
+        HStack(spacing: 6) {
+            ForEach(PickerTypeFilter.allCases) { filter in
+                let isActive = state.activeTypeFilter == filter
+                Button {
+                    onSelectTypeFilter(filter)
+                } label: {
+                    Image(systemName: filter.symbolName)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(isActive ? Color.white.opacity(0.95) : Color.secondary.opacity(0.86))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 24)
+                        .background(
+                            Capsule()
+                                .fill(isActive ? Color.accentColor.opacity(0.85) : Color.primary.opacity(0.055))
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isActive ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.08), lineWidth: 0.75)
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(filter.displayName)
+                .accessibilityLabel(filter.displayName)
+                .accessibilityAddTraits(isActive ? .isSelected : [])
+            }
+        }
+        .padding(.horizontal, 1)
+        .padding(.vertical, 1)
+    }
+
+    private var tagFilterBar: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(Array(state.tagFilterChips.enumerated()), id: \.element.id) { index, chip in
+                    let isActive = state.isTagChipActive(chip)
+                    let isFocused = state.focusedTagChipIndex == index
+                    let tagColor = chip.tag.map { settings.tagColor(for: $0) } ?? .graphite
+                    Button {
+                        onSelectTagChip(chip)
+                    } label: {
+                        Text(chip.title)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(tagChipForeground(tagColor, isActive: isActive))
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
+                            .background(
+                                Capsule()
+                                    .fill(tagChipFill(tagColor, isActive: isActive))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(tagChipStroke(tagColor, isActive: isActive, isFocused: isFocused), lineWidth: isFocused ? 1.35 : 0.75)
+                            )
+                            .shadow(color: isFocused ? tagColor.base.opacity(0.24) : .clear, radius: 5, x: 0, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                    .scaleEffect(isFocused ? 1.04 : 1)
+                    .contextMenu {
+                        tagColorMenu(for: chip)
+                    }
+                    .accessibilityAddTraits(isActive ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, 1)
+            .padding(.vertical, 1)
+        }
+        .scrollIndicators(.never)
+    }
+
+    private func tagChipForeground(_ color: TagColor, isActive: Bool) -> Color {
+        if isActive {
+            return colorScheme == .dark ? Color.white.opacity(0.94) : color.foreground
+        }
+        return color.foreground.opacity(colorScheme == .dark ? 0.92 : 0.88)
+    }
+
+    private func tagChipFill(_ color: TagColor, isActive: Bool) -> Color {
+        if isActive {
+            return color.base.opacity(colorScheme == .dark ? 0.42 : 0.30)
+        }
+        return color.base.opacity(colorScheme == .dark ? 0.16 : 0.20)
+    }
+
+    private func tagChipStroke(_ color: TagColor, isActive: Bool, isFocused: Bool) -> Color {
+        if isFocused {
+            return color.base.opacity(colorScheme == .dark ? 0.82 : 0.72)
+        }
+        return color.base.opacity(isActive ? 0.42 : 0.26)
+    }
+
+    @ViewBuilder
+    private func tagColorMenu(for chip: PickerTagChip) -> some View {
+        if let tag = chip.tag {
+            ForEach(TagColor.allCases) { color in
+                Button {
+                    settings.setTagColor(color, for: tag)
+                } label: {
+                    Label(color.displayName, systemImage: settings.tagColor(for: tag) == color ? "checkmark.circle.fill" : "circle.fill")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pickerRow(item: ClipboardHistoryItem, index: Int, section: String, isHistoryNewest: Bool) -> some View {
+        if state.editingTagsItem?.dedupKey == item.dedupKey {
+            TagEditorRow(
+                item: item,
+                text: $state.tagEditorText,
+                reduceMotion: reduceMotion,
+                onCommit: onCommitTagEdit,
+                onCancel: onCancelTagEdit
+            )
+            .id("editor-\(item.id)")
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        } else {
+            ClipboardItemRow(
+                item: item,
+                isSelected: index == state.selectedIndex,
+                isPressed: index == state.pressedIndex,
+                isNewest: isHistoryNewest,
+                isDeleteRevealed: state.revealedDeleteItem == item,
+                isDeleting: state.deletingItem == item,
+                showsReturnGlyph: true,
+                showsCardFill: false,
+                revealDelay: revealDelay(for: index),
+                isClearing: clearingItems.contains(item),
+                clearDelay: clearDelay(for: index),
+                showsCopiedConfirmation: false,
+                reduceMotion: reduceMotion,
+                isHoveredOverride: state.hoveredItemID == item.id,
+                tagColorProvider: { settings.tagColor(for: $0) },
+                onRevealDelete: {
+                    onRevealDelete(index)
+                },
+                onBeginDelete: {
+                    onBeginDelete(index)
+                },
+                onConfirmDelete: {
+                    onConfirmDelete(item)
+                },
+                onBeginTagEdit: {
+                    onBeginTagEdit(index)
+                },
+                onTogglePin: {
+                    onTogglePin(item)
+                },
+                onHoverChanged: { hovering in
+                    state.hoveredItemID = hovering ? item.id : nil
+                }
+            ) {
+                onSelect(index)
+            }
+            // Section-prefixed identity: when an item moves between sections
+            // (pin/unpin), LazyVStack must treat it as a new row. Reusing the
+            // bare item.id across sections left stale rows rendering outdated
+            // selection state.
+            .id("\(section)-\(item.id)")
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
 
@@ -592,7 +686,8 @@ struct ClipboardPickerView: View {
     private func beginClearHistory() {
         guard !state.items.isEmpty, !isClearingHistory else { return }
 
-        let itemsToClear = state.filteredItems
+        let itemsToClear = state.filteredHistoryItems
+        guard !itemsToClear.isEmpty else { return }
         HistoryClearAnimation.run(
             items: itemsToClear,
             reduceMotion: reduceMotion,
@@ -615,9 +710,10 @@ struct ClipboardPickerView: View {
     private func scroll(to index: Int, with proxy: ScrollViewProxy) {
         guard state.filteredItems.indices.contains(index) else { return }
         let item = state.filteredItems[index]
+        let rowID = rowID(for: index, item: item)
 
         let action = {
-            proxy.scrollTo(item.id, anchor: .center)
+            proxy.scrollTo(rowID, anchor: .center)
         }
 
         DispatchQueue.main.async {
@@ -628,6 +724,17 @@ struct ClipboardPickerView: View {
             }
         }
     }
+
+    private func rowID(for index: Int, item: ClipboardHistoryItem) -> String {
+        let pinnedCount = state.filteredPinnedItems.count
+        if index < pinnedCount {
+            return "pinned-\(item.id)"
+        }
+        if index < pinnedCount + state.filteredTaggedItems.count {
+            return "tagged-\(item.id)"
+        }
+        return "history-\(item.id)"
+    }
 }
 
 enum PickerTheme {
@@ -637,7 +744,6 @@ enum PickerTheme {
     static let rowRadius: CGFloat = 9
     static let clearRippleStep: Double = 0.016
     static let clearRippleDuration: Double = 0.16
-    static let selectionHighlightID = "selected-row-highlight"
 }
 
 enum HistoryClearAnimation {
@@ -669,6 +775,126 @@ enum HistoryClearAnimation {
     }
 }
 
+private struct SectionHeader: View {
+    let title: String
+    let count: Int
+    let isCollapsed: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 6) {
+                Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 12)
+
+                Text(title)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .frame(height: 24)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PickerNotice: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11.5, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.74))
+            )
+            .shadow(color: .black.opacity(0.22), radius: 8, y: 2)
+            .accessibilityLabel(text)
+    }
+}
+
+private struct TagEditorRow: View {
+    let item: ClipboardHistoryItem
+    @Binding var text: String
+    let reduceMotion: Bool
+    let onCommit: () -> Void
+    let onCancel: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "tag")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.accentColor.opacity(0.92))
+                .frame(width: 26, height: 26)
+                .background(
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.14))
+                )
+
+            VStack(alignment: .leading, spacing: 5) {
+                TextField("tag, another-tag", text: $text)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .focused($isFocused)
+                    .onSubmit(onCommit)
+
+                Text("Enter saves · Esc cancels · max 5 tags")
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Button(action: onCommit) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor.opacity(0.92))
+            .help("Save tags")
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.secondary)
+            .help("Cancel")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: PickerTheme.rowRadius, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: PickerTheme.rowRadius, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(0.38), lineWidth: 0.9)
+        )
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                isFocused = true
+            }
+        }
+    }
+}
+
 struct ClipboardItemRow: View {
     let item: ClipboardHistoryItem
     let isSelected: Bool
@@ -678,20 +904,27 @@ struct ClipboardItemRow: View {
     let isDeleting: Bool
     let showsReturnGlyph: Bool
     let showsCardFill: Bool
-    let selectionNamespace: Namespace.ID?
     let revealDelay: Double
     let isClearing: Bool
     let clearDelay: Double
     let showsCopiedConfirmation: Bool
     let reduceMotion: Bool
+    var isHoveredOverride: Bool? = nil
+    let tagColorProvider: (String) -> TagColor
     let onRevealDelete: () -> Void
     let onBeginDelete: () -> Void
     let onConfirmDelete: () -> Void
+    var onBeginTagEdit: () -> Void = {}
+    var onTogglePin: () -> Void = {}
+    var onHoverChanged: ((Bool) -> Void)? = nil
     let onSelect: () -> Void
 
-    @State private var isHovered = false
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHoveredLocal = false
     @State private var isRevealed = false
     @State private var hasScheduledDelete = false
+
+    private var isHovered: Bool { isHoveredOverride ?? isHoveredLocal }
 
     private var textPresentation: ClipboardItemPresentation? {
         guard let text = item.textValue else { return nil }
@@ -719,6 +952,26 @@ struct ClipboardItemRow: View {
             .opacity(isDeleting ? 0 : 1)
             .animation(rowSlideAnimation, value: isDeleteRevealed)
             .animation(rowSlideAnimation, value: isDeleting)
+
+            if showsReturnGlyph {
+                HStack(spacing: 8) {
+                    pinButton
+
+                    tagEditButton
+
+                    Color.clear
+                        .frame(width: 18, height: 18)
+                }
+                .padding(.trailing, showsCardFill ? 11 : 10)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .offset(x: rowOffset)
+                .opacity(showsTagEditButton ? 1 : 0)
+                .scaleEffect(showsTagEditButton ? 1 : 0.9)
+                .allowsHitTesting(showsTagEditButton)
+                .animation(.easeOut(duration: 0.10), value: showsTagEditButton)
+                .animation(rowSlideAnimation, value: isDeleteRevealed)
+                .animation(rowSlideAnimation, value: isDeleting)
+            }
         }
         .contentShape(RoundedRectangle(cornerRadius: PickerTheme.rowRadius, style: .continuous))
         .background(RightClickReader(onRightClick: onRevealDelete))
@@ -726,8 +979,9 @@ struct ClipboardItemRow: View {
         .allowsHitTesting(!isClearing)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.10)) {
-                isHovered = hovering
+                isHoveredLocal = hovering
             }
+            onHoverChanged?(hovering)
         }
         .opacity(rowOpacity)
         .offset(y: rowVerticalOffset)
@@ -760,6 +1014,9 @@ struct ClipboardItemRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if showsReturnGlyph {
+                Color.clear
+                    .frame(width: 18, height: 18)
+
                 Text("↵")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color.accentColor.opacity(0.74))
@@ -791,24 +1048,114 @@ struct ClipboardItemRow: View {
             HStack(spacing: 8) {
                 imageThumbnail(imagePresentation.image)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Image")
                         .lineLimit(1)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    tagLabels
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else if let textPresentation {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(textPresentation.text)
                     .lineLimit(2)
                     .font(textPresentation.previewFont)
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                tagLabels
             }
         }
+    }
+
+    @ViewBuilder
+    private var tagLabels: some View {
+        if item.pinnedSlot != nil || !item.tags.isEmpty || item.sourceAppSummaryLabel != nil {
+            HStack(spacing: 4) {
+                if let slot = item.pinnedSlot {
+                    Text("⌃⌥\(slot)")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(CopypastikTheme.accent.opacity(colorScheme == .dark ? 0.95 : 0.9))
+                        .lineLimit(1)
+                        .padding(.horizontal, 5)
+                        .frame(height: 16)
+                        .background(
+                            Capsule()
+                                .fill(CopypastikTheme.accent.opacity(colorScheme == .dark ? 0.18 : 0.13))
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(CopypastikTheme.accent.opacity(0.30), lineWidth: 0.5)
+                        )
+                        .help("Control+Option+\(slot) pastes this clip from anywhere")
+                }
+
+                if !item.tags.isEmpty {
+                    ForEach(item.tags, id: \.self) { tag in
+                        let tagColor = tagColorProvider(tag)
+                        Text("#\(tag)")
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundStyle(tagColor.foreground.opacity(colorScheme == .dark ? 0.92 : 0.86))
+                            .lineLimit(1)
+                            .padding(.horizontal, 5)
+                            .frame(height: 16)
+                            .background(
+                                Capsule()
+                                    .fill(tagColor.base.opacity(colorScheme == .dark ? 0.16 : 0.18))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(tagColor.base.opacity(0.22), lineWidth: 0.5)
+                            )
+                    }
+                } else if let sourceAppSummaryLabel = item.sourceAppSummaryLabel {
+                    Text(sourceAppSummaryLabel)
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+
+    private var showsTagEditButton: Bool {
+        (isHovered || isSelected) && !isDeleteRevealed && !isDeleting && !isClearing
+    }
+
+    private var tagEditButton: some View {
+        Button(action: onBeginTagEdit) {
+            Image(systemName: "tag")
+                .font(.system(size: 10.5, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.accentColor.opacity(0.78))
+                .frame(width: 18, height: 18)
+                .background(
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.11))
+                )
+        }
+        .buttonStyle(.plain)
+        .help("Edit tags")
+        .accessibilityLabel("Edit tags")
+    }
+
+    private var pinButton: some View {
+        Button(action: onTogglePin) {
+            Image(systemName: item.isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 10.5, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(item.isPinned ? CopypastikTheme.accent : Color.secondary.opacity(0.82))
+                .frame(width: 18, height: 18)
+                .background(
+                    Circle()
+                        .fill(item.isPinned ? CopypastikTheme.accent.opacity(0.16) : Color.primary.opacity(0.07))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(item.isPinned ? "Unpin (⌘P)" : "Pin (⌘P)")
+        .accessibilityLabel(item.isPinned ? "Unpin" : "Pin")
     }
 
     @ViewBuilder
@@ -909,10 +1256,18 @@ struct ClipboardItemRow: View {
             Circle()
                 .fill(iconFill)
 
-            Image(systemName: iconSymbolName)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(iconForeground)
-                .symbolRenderingMode(.hierarchical)
+            if let sourceAppIcon {
+                Image(nsImage: sourceAppIcon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 15, height: 15)
+                    .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
+            } else {
+                Image(systemName: iconSymbolName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(iconForeground)
+                    .symbolRenderingMode(.hierarchical)
+            }
         }
         .frame(width: 26, height: 26)
         .overlay(alignment: .topTrailing) {
@@ -927,6 +1282,35 @@ struct ClipboardItemRow: View {
                     .offset(x: 1, y: -1)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if item.isPinned {
+                pinBadge
+            }
+        }
+    }
+
+    private var pinBadge: some View {
+        Group {
+            if let slot = item.pinnedSlot {
+                Text("\(slot)")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+            } else {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 6.5, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 12, height: 12)
+        .background(Circle().fill(CopypastikTheme.accent))
+        .overlay(
+            Circle().strokeBorder(Color(nsColor: .windowBackgroundColor).opacity(0.85), lineWidth: 1)
+        )
+        .offset(x: 2, y: 2)
+    }
+
+    private var sourceAppIcon: NSImage? {
+        SourceAppIconProvider.icon(forBundleID: item.sourceAppBundleID)
     }
 
     private var iconFill: Color {
@@ -952,12 +1336,7 @@ struct ClipboardItemRow: View {
     @ViewBuilder
     private var rowBackgroundLayer: some View {
         if isSelected {
-            if let selectionNamespace, !reduceMotion {
-                selectedRowBackground
-                    .matchedGeometryEffect(id: PickerTheme.selectionHighlightID, in: selectionNamespace)
-            } else {
-                selectedRowBackground
-            }
+            selectedRowBackground
         } else if isHovered || showsCardFill {
             passiveRowBackground
         } else {
@@ -974,9 +1353,9 @@ struct ClipboardItemRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.20),
-                            Color.accentColor.opacity(0.20),
-                            CopypastikTheme.accentGlow.opacity(0.11)
+                            Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28),
+                            Color.accentColor.opacity(colorScheme == .dark ? 0.32 : 0.26),
+                            CopypastikTheme.accentGlow.opacity(colorScheme == .dark ? 0.18 : 0.16)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -988,17 +1367,17 @@ struct ClipboardItemRow: View {
                 .strokeBorder(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.42),
-                            Color.accentColor.opacity(0.58),
-                            Color.accentColor.opacity(0.24)
+                            Color.white.opacity(colorScheme == .dark ? 0.34 : 0.60),
+                            Color.accentColor.opacity(0.76),
+                            Color.accentColor.opacity(0.38)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 0.9
+                    lineWidth: 1.2
                 )
         )
-        .shadow(color: rowGlowColor, radius: 10, x: 0, y: 1)
+        .shadow(color: rowGlowColor, radius: 12, x: 0, y: 1)
     }
 
     private var passiveRowBackground: some View {
@@ -1038,7 +1417,7 @@ struct ClipboardItemRow: View {
     }
 
     private var rowGlowColor: Color {
-        isSelected ? CopypastikTheme.accentGlow.opacity(0.22) : .clear
+        isSelected ? CopypastikTheme.accentGlow.opacity(colorScheme == .dark ? 0.30 : 0.26) : .clear
     }
 
     private var copiedConfirmationReservedWidth: CGFloat {
@@ -1130,6 +1509,11 @@ private struct RightClickReader: NSViewRepresentable {
 
     private final class RightClickView: NSView {
         var onRightClick: (() -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard NSApp.currentEvent?.type == .rightMouseDown else { return nil }
+            return super.hitTest(point)
+        }
 
         override func rightMouseDown(with event: NSEvent) {
             onRightClick?()

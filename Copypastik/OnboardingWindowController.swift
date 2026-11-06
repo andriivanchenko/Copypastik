@@ -51,14 +51,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        print("[Copypastik] onboarding window became key")
     }
 
-    func windowWillClose(_ notification: Notification) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.window = nil
-            print("[Copypastik] onboarding window closed")
-        }
+    func windowDidClose(_ notification: Notification) {
+        window = nil
     }
 }
 
@@ -97,6 +93,11 @@ struct OnboardingView: View {
 
                 if selectedIndex == 1 {
                     ShortcutKeycapsView(shortcut: settings.pickerShortcut)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+
+                if selectedIndex == 3 || selectedIndex == 4 {
+                    TagKeycapsView(selectedIndex: selectedIndex)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
 
@@ -195,22 +196,32 @@ struct OnboardingView: View {
         [
             OnboardingStep(
                 title: "Welcome to Copypastik",
-                body: "Keep a clean text and image clipboard history right in your menu bar.",
+                body: "Keep a small, searchable clipboard history for text and images right in your menu bar.",
                 symbolName: "menubar.rectangle"
             ),
             OnboardingStep(
-                title: "Use the Shortcut",
-                body: "Press \(settings.pickerShortcut.displayName) anywhere to open the floating picker.",
+                title: "Open the Picker",
+                body: "Press \(settings.pickerShortcut.displayName) anywhere to bring up your latest clipboard items.",
                 symbolName: "keyboard"
             ),
             OnboardingStep(
-                title: "Copy or Paste",
-                body: "Choose an item and Copypastik writes it back to your clipboard. Turn on Automatic Paste later if you want the one-step workflow.",
+                title: "Paste the Latest",
+                body: "The newest history item is selected first. Press Enter to copy it back, then paste with Command-V.",
                 symbolName: "photo.on.rectangle"
             ),
             OnboardingStep(
-                title: "Search and Manage History",
-                body: "Filter copied text and images, use the arrow keys, delete rows, or clear everything.",
+                title: "Keep Tagged Snippets",
+                body: "Press Command-T on an item to add tags. Tagged snippets are kept locally on this Mac and survive restarts.",
+                symbolName: "tag"
+            ),
+            OnboardingStep(
+                title: "Browse Tags Fast",
+                body: "From the first history row, press Up to reach All and your tags, then use Left and Right to switch the list.",
+                symbolName: "number"
+            ),
+            OnboardingStep(
+                title: "Search and Manage",
+                body: "Search content, type #tag filters, delete rows, or clear regular history without touching tagged snippets.",
                 symbolName: "magnifyingglass"
             ),
             OnboardingStep(
@@ -295,22 +306,42 @@ private struct OnboardingPickerPreview: View {
             .padding(.bottom, 8)
 
             VStack(spacing: 5) {
+                if showsTagBrowser {
+                    PreviewTagBar(activeChip: activeTagChip)
+                        .padding(.bottom, 1)
+                }
+
+                if showsTaggedPreview {
+                    PreviewSectionLabel(title: "Tagged", count: selectedIndex == 4 ? 1 : 3)
+
+                    PreviewRow(
+                        symbolName: "terminal",
+                        title: "select * from snippets",
+                        isSelected: selectedPreviewRow == 0,
+                        tags: ["sql"]
+                    )
+                }
+
                 PreviewRow(
-                    symbolName: "terminal",
-                    title: "xcodebuild build -scheme Copypastik",
-                    isSelected: selectedPreviewRow == 0
-                )
-                PreviewRow(
-                    symbolName: "link",
-                    title: "https://developer.apple.com/design",
-                    isSelected: selectedPreviewRow == 1
-                )
-                PreviewRow(
-                    symbolName: "photo",
-                    title: "Screenshot",
+                    symbolName: historyFirstSymbol,
+                    title: historyFirstTitle,
                     isSelected: selectedPreviewRow == 2,
-                    showsThumbnail: true
+                    showsThumbnail: selectedIndex == 2
                 )
+
+                if !showsTaggedPreview {
+                    PreviewRow(
+                        symbolName: "link",
+                        title: "https://developer.apple.com/design",
+                        isSelected: selectedPreviewRow == 1
+                    )
+                    PreviewRow(
+                        symbolName: trailingHistorySymbol,
+                        title: trailingHistoryTitle,
+                        isSelected: selectedPreviewRow == 3,
+                        showsThumbnail: trailingHistorySymbol == "photo"
+                    )
+                }
             }
             .padding(.horizontal, 10)
 
@@ -319,6 +350,9 @@ private struct OnboardingPickerPreview: View {
             HStack(spacing: 5) {
                 KeycapToken(text: "↑↓", minWidth: 33)
                 KeycapToken(text: "↵")
+                if selectedIndex == 3 || selectedIndex == 4 {
+                    KeycapToken(text: "⌘T", minWidth: 35)
+                }
                 KeycapToken(text: "esc", minWidth: 34)
             }
             .padding(.bottom, 9)
@@ -340,7 +374,11 @@ private struct OnboardingPickerPreview: View {
         switch selectedIndex {
         case 1:
             return shortcutDisplayName
+        case 4:
+            return "#sql"
         case 3:
+            return "Search history or #tag..."
+        case 5:
             return "design"
         default:
             return "Search history..."
@@ -352,10 +390,42 @@ private struct OnboardingPickerPreview: View {
         case 2:
             return 2
         case 3:
+            return 0
+        case 4:
+            return 0
+        case 5:
             return 1
         default:
-            return 0
+            return 2
         }
+    }
+
+    private var showsTaggedPreview: Bool {
+        selectedIndex == 3 || selectedIndex == 4
+    }
+
+    private var showsTagBrowser: Bool {
+        selectedIndex == 4
+    }
+
+    private var activeTagChip: String {
+        selectedIndex == 4 ? "#sql" : "All"
+    }
+
+    private var historyFirstTitle: String {
+        selectedIndex == 2 ? "Screenshot" : "xcodebuild build -scheme Copypastik"
+    }
+
+    private var historyFirstSymbol: String {
+        selectedIndex == 2 ? "photo" : "terminal"
+    }
+
+    private var trailingHistoryTitle: String {
+        selectedIndex == 2 ? "xcodebuild build -scheme Copypastik" : "Screenshot"
+    }
+
+    private var trailingHistorySymbol: String {
+        selectedIndex == 2 ? "terminal" : "photo"
     }
 }
 
@@ -444,6 +514,23 @@ private struct ShortcutKeycapsView: View {
     }
 }
 
+private struct TagKeycapsView: View {
+    let selectedIndex: Int
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(tokens, id: \.self) { token in
+                KeycapToken(text: token, minWidth: token.count > 1 ? 42 : 32)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private var tokens: [String] {
+        selectedIndex == 3 ? ["⌘T", "↵", "esc"] : ["↑", "←→", "↵"]
+    }
+}
+
 private struct LaunchAtLoginToggleRow: View {
     @Binding var isOn: Bool
 
@@ -491,6 +578,57 @@ private struct LaunchAtLoginToggleRow: View {
     }
 }
 
+private struct PreviewTagBar: View {
+    let activeChip: String
+
+    private let chips = ["All", "#sql", "#hello"]
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(chips, id: \.self) { chip in
+                let isActive = chip == activeChip
+                Text(chip)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(isActive ? Color.accentColor : Color.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 7)
+                    .frame(height: 18)
+                    .background(
+                        Capsule()
+                            .fill(isActive ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.045))
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(isActive ? Color.accentColor.opacity(0.36) : Color.primary.opacity(0.08), lineWidth: 0.65)
+                    )
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 20)
+    }
+}
+
+private struct PreviewSectionLabel: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 7.5, weight: .bold))
+            Text(title)
+                .textCase(.uppercase)
+            Text("\(count)")
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .font(.system(size: 9.5, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 6)
+        .frame(height: 15)
+    }
+}
+
 private extension PickerShortcut {
     var keycapTokens: [String] {
         switch self {
@@ -505,6 +643,7 @@ private struct PreviewRow: View {
     let title: String
     let isSelected: Bool
     var showsThumbnail = false
+    var tags: [String] = []
 
     var body: some View {
         HStack(spacing: 9) {
@@ -542,6 +681,22 @@ private struct PreviewRow: View {
                     .font(.system(size: 12.5, weight: .medium, design: symbolName == "terminal" ? .monospaced : .default))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+
+                if !tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(tags, id: \.self) { tag in
+                            Text("#\(tag)")
+                                .font(.system(size: 8.5, weight: .semibold))
+                                .foregroundStyle(Color.accentColor.opacity(0.86))
+                                .padding(.horizontal, 5)
+                                .frame(height: 14)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.accentColor.opacity(0.12))
+                                )
+                        }
+                    }
+                }
             }
 
             Spacer()
@@ -558,7 +713,7 @@ private struct PreviewRow: View {
             }
         }
         .padding(.horizontal, 10)
-        .frame(height: showsThumbnail ? 56 : 50)
+        .frame(height: rowHeight)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.035))
@@ -567,5 +722,12 @@ private struct PreviewRow: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(isSelected ? Color.accentColor.opacity(0.62) : Color.primary.opacity(0.06), lineWidth: 0.75)
         )
+    }
+
+    private var rowHeight: CGFloat {
+        if showsThumbnail {
+            return 56
+        }
+        return tags.isEmpty ? 46 : 50
     }
 }

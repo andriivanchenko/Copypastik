@@ -13,10 +13,11 @@ final class PasteHintToastController {
     }
 
     private var panel: NSPanel?
+    private var label: NSTextField?
     private var hideWorkItem: DispatchWorkItem?
     private var presentationID = 0
 
-    func show(relativeTo application: NSRunningApplication?) {
+    func show(relativeTo application: NSRunningApplication?, message: String = "Copied! ⌘V to paste") {
         guard let screen = screen(for: application) else { return }
 
         presentationID += 1
@@ -25,6 +26,7 @@ final class PasteHintToastController {
 
         let panel = panel ?? makePanel()
         self.panel = panel
+        label?.stringValue = message
         position(panel, on: screen)
 
         if panel.isVisible {
@@ -63,7 +65,7 @@ final class PasteHintToastController {
     private func makeContentView() -> NSView {
         let backdrop = NSVisualEffectView(frame: NSRect(origin: .zero, size: Metrics.size))
         backdrop.material = .hudWindow
-        backdrop.blendingMode = .withinWindow
+        backdrop.blendingMode = .behindWindow
         backdrop.state = .active
         backdrop.appearance = NSAppearance(named: .vibrantDark)
         backdrop.wantsLayer = true
@@ -86,6 +88,7 @@ final class PasteHintToastController {
         imageView.setContentHuggingPriority(.required, for: .horizontal)
 
         let label = NSTextField(labelWithString: "Copied! ⌘V to paste")
+        self.label = label
         label.font = .systemFont(ofSize: 13.5, weight: .semibold)
         label.textColor = .white
         label.shadow = {
@@ -146,6 +149,7 @@ final class PasteHintToastController {
                 guard let self, presentationID == self.presentationID else { return }
                 panel?.close()
                 self.panel = nil
+                self.label = nil
             }
         }
     }

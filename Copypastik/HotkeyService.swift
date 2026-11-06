@@ -31,12 +31,15 @@ final class HotkeyService {
                     &hotKeyID
                 )
                 guard result == noErr else { return result }
+                // Not ours — fall through instead of swallowing the event,
+                // since other handlers (e.g. QuickSlotHotkeyService) share
+                // this same application event target.
+                guard hotKeyID.id == 1 else { return OSStatus(eventNotHandledErr) }
+
                 let service = Unmanaged<HotkeyService>.fromOpaque(userData).takeUnretainedValue()
-                if hotKeyID.id == 1 {
-                    print("[Copypastik] global shortcut pressed")
-                    DispatchQueue.main.async {
-                        service.onTrigger?()
-                    }
+                print("[Copypastik] global shortcut pressed")
+                DispatchQueue.main.async {
+                    service.onTrigger?()
                 }
                 return noErr
             },
